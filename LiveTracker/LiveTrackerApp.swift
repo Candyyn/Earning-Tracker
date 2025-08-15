@@ -6,27 +6,40 @@
 //
 
 import SwiftUI
-import SwiftData
 
 @main
-struct LiveTrackerApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+struct LiveEarningsApp: App {
+    @StateObject private var settingsVM = SettingsViewModel()
+    @StateObject private var earningsVM: EarningsViewModel
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    init() {
+        // Ensure shared SettingsViewModel and EarningsViewModel
+        let settings = SettingsViewModel()
+        _settingsVM = StateObject(wrappedValue: settings)
+        _earningsVM = StateObject(wrappedValue: EarningsViewModel(settingsVM: settings))
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                MainView(vm: earningsVM)
+                    .tabItem {
+                        Label("Main", systemImage: "dollarsign.circle")
+                    }
+                ShiftView(viewModel: earningsVM)
+                    .tabItem {
+                        Label("Shifts", systemImage: "calendar")
+                    }
+
+                SettingsView(viewModel: settingsVM)
+                    .tabItem {
+                        Label("Settings", systemImage: "gear")
+                    }
+            }
+            .tabViewStyle(DefaultTabViewStyle()) // Native iOS tab style
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemBackground))
+            .ignoresSafeArea()
         }
-        .modelContainer(sharedModelContainer)
     }
 }
