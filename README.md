@@ -3,6 +3,17 @@
 A SwiftUI iOS application to track work shifts, calculate earnings in real time, and manage hourly rate settings.  
 Supports different rates for day, evening, night, and weekends, with optional unpaid breaks.
 
+# Screenshots
+
+## Main
+![Main](./Main.png)
+
+## Settings
+![Settings](./Settings.png)
+
+## Shifts
+![Shifts](./Shifts.png)
+
 ## Features
 
 - 📅 **Shift Management**
