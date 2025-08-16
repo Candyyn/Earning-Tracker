@@ -8,7 +8,7 @@ Supports different rates for day, evening, night, and weekends, with optional un
 <p align="center">
   <img src="./Main.png" alt="Main" width="250"/>
   <img src="./Settings.png" alt="Settings" width="250"/>
-  <img src="./Shifts.png" alt="Shifts" width="250"/>
+  <img src="./Shift.png" alt="Shifts" width="250"/>
 </p>
 
 
