@@ -14,12 +14,12 @@ Supports different rates for day, evening, night, and weekends, with optional un
 
 ## Features
 
-- 📅 **Shift Management**
+- **Shift Management**
   - Add, edit, and delete work shifts.
   - Supports start/end times and optional unpaid breaks.
   - Entire row tap for quick editing.
   
-- 💰 **Real-Time Earnings**
+- **Real-Time Earnings**
   - Calculates total earnings for the current month in real time.
   - Different rates for:
     - Day (08:00–18:00)
@@ -36,24 +36,3 @@ Supports different rates for day, evening, night, and weekends, with optional un
 - 📊 **Monthly Totals**
   - Displays total earned for past months at the bottom of the list.
   - Excludes upcoming months from earnings view.
-
-## Technical Details
-
-- **Language:** Swift
-- **Framework:** SwiftUI
-- **State Management:** `@ObservedObject` and `@Published` in ViewModels
-- **Persistence:** `UserDefaults` (JSON-encoded `Shift` array)
-- **Live Updates:** `Combine` timer to update current earnings every second
-
-## Data Model
-
-### Shift
-```swift
-struct Shift: Identifiable, Codable {
-    var id = UUID()
-    var start: Date
-    var end: Date
-    var breakStart: Date?
-    var breakEnd: Date?
-    var breakPaid: Bool
-}
