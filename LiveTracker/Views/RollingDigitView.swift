@@ -26,7 +26,7 @@ struct RollingDigitView: View {
             offsetY = -CGFloat(digit) * 40
         }
         .onChange(of: digit) { oldvalue, newDigit in
-            withAnimation(.easeInOut(duration: 0.4)) {
+            withAnimation(.easeInOut(duration: 1)) {
                 offsetY = -CGFloat(newDigit) * 40
             }
         }

@@ -4,10 +4,38 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>EarningsWidgetExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>LiveTracker.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>20C657962E8D89F700787E38</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>20CB69742E4A798800204727</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>20CB69832E4A798B00204727</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>20CB698D2E4A798B00204727</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

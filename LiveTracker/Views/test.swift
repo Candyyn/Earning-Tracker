@@ -1,0 +1,207 @@
+//
+//  MainView.swift
+//  Tracker
+//
+//  Created by Emil Magnusson on 2025-08-11.
+//
+import SwiftUI
+
+struct testMainView: View {
+    @ObservedObject var vm: EarningsViewModel
+    @ObservedObject var sm: SettingsViewModel
+    
+    @State private var lastEarnings: Double = 0
+    @State private var floatingText: String? = nil
+    @State private var animateFloating = false
+    @State private var randomXOffset: CGFloat = 0
+    @State private var randomXOffsetStart: CGFloat = 0
+    @State private var randomYOffset: CGFloat = 0
+    
+    @State private var showSettings = false
+    @State private var showShifts = false
+    
+    @State var animation = false
+
+    
+    var currencyFormater: NumberFormatter = {
+            var formatter = NumberFormatter()
+            
+            formatter.numberStyle = .currency
+            formatter.currencySymbol = "kr"
+            
+            return formatter
+        }()
+    
+
+    
+    fileprivate func TextShimmer(duration: Double) -> ZStack<TupleView<(some View, some View)>> {
+        
+        let colors: [String: Color] = [
+            "day": .secondary,
+            "evening": .orange,
+            "night": .indigo,
+            "weekend": .pink,
+        ]
+        
+        let type = vm.currentType(for: Date())
+        
+        return ZStack {
+            
+            let text = "\(currencyFormater.string(from: vm.hourlyRate(for: Date()) as NSNumber) ?? "")/h \(vm.isOnBreak() ? " - Break" : "")"
+            
+            Text(text)
+                .contentTransition(.numericText(value: vm.hourlyRate(for: Date())))
+                .animation(.default, value: vm.currentEarnings)
+                //.font(.caption)
+                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 0) {
+                ForEach(0..<text.count,id: \.self){ index in
+                    Text(
+                        String(
+                            text[text.index(text.startIndex, offsetBy: index)]
+                        )
+                    )
+                    .contentTransition(.numericText(value: vm.hourlyRate(for: Date())))
+                    .animation(.default, value: vm.currentEarnings)
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundStyle(colors[type] ?? .secondary)
+                }
+            }
+            .allowsTightening(false)
+            .kerning(0)
+            .mask(
+                shimmerMask(for: text.count, color: colors[type] ?? .secondary, )
+            )
+            .onAppear(perform: {
+                
+                withAnimation(Animation.linear(duration: duration)
+                    .delay(2)
+                    .repeatForever(autoreverses: false)){ animation.toggle(); }
+            })
+        }
+    }
+    
+    @ViewBuilder
+    private func shimmerMask(for count: Int, color: Color ) -> some View {
+        let charWidth: CGFloat = 15 / 2 // adjust if needed
+        let distance = charWidth * CGFloat(count + 1)
+        
+        Rectangle()
+            .rotation(.init(degrees: 60))
+            .padding(5)
+            .offset(x: 5)
+            .offset(x: animation ? distance : -distance)
+    }
+    
+    
+    
+    
+
+
+    var body: some View {
+        ZStack {
+        
+            
+            VStack {
+                            HStack {
+                                Button(action: {
+                                    showShifts.toggle()
+                                }) {
+                                    Image(systemName: "calendar")
+                                        .font(.title2)
+                                        .padding()
+                                }
+                                Spacer()
+                                Button(action: {
+                                    showSettings.toggle()
+                                }) {
+                                    Image(systemName: "gearshape")
+                                        .font(.title2)
+                                        .padding()
+                                }
+                                
+                            }
+                            Spacer()
+                        }
+            .sheet(isPresented: $showSettings) {
+                NavigationView {
+                    SettingsView(viewModel: sm)
+                        .toolbar {
+                            ToolbarItem {
+                                Button(action: {
+                                    showSettings.toggle();
+                                }) {
+                                    Text("Done")
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationBackgroundInteraction(.automatic)
+                .presentationBackground(.regularMaterial)
+            }
+            .sheet(isPresented: $showShifts) {
+                NavigationView {
+                    ShiftView(viewModel: vm)
+                        .toolbar {
+                            ToolbarItem {
+                                Button(action: {
+                                    showShifts.toggle();
+                                }) {
+                                    Text("Done")
+                                }
+                            }
+                        }
+                        
+                }
+                .presentationDetents([.medium, .large])
+                .presentationBackgroundInteraction(.automatic)
+                .presentationBackground(.regularMaterial)
+            }
+            
+            
+            
+             
+            
+            ZStack(alignment: .topLeading) {
+                
+                let selectedPay = sm.settings.last!
+                
+                GeometryReader { geometry in
+                    
+                    Text("\(selectedPay.showEarned ? currencyFormater.string(from: vm.currentEarnings as NSNumber)! : "***,**")")
+                        .contentTransition(.numericText(value: vm.currentEarnings))
+                        .font(.largeTitle)
+                        .bold()
+                        .animation(.easeInOut(duration: 0.2), value: vm.currentEarnings)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height * 1/4)
+                    
+                    let width = geometry.size.width - 10
+                    let height = (geometry.size.height / 2)
+                    let centerX = geometry.size.width / 2
+                    let centerY = geometry.size.height * 3/4
+                    
+                    infoBox()
+                }
+            }
+            
+        }
+        .onAppear {
+            lastEarnings = vm.currentEarnings
+        }
+        .onChange(of: vm.currentEarnings) { oldvalue, newValue in
+                    let diff = newValue - lastEarnings
+                    if diff != 0 {
+                        let diffText = "+\(currencyFormater.string(from: diff as NSNumber) ?? "")"
+                        floatingText = diffText
+                        randomXOffset = CGFloat.random(in: -40...40)
+                        //randomXOffsetStart = CGFloat.random(in: -80...80)
+                        randomYOffset = CGFloat.random(in: -80 ... -40)
+                    }
+                    lastEarnings = newValue
+                }
+    }
+}
+

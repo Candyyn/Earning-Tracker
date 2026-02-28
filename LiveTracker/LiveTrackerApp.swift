@@ -21,25 +21,9 @@ struct LiveEarningsApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView {
-                MainView(vm: earningsVM)
-                    .tabItem {
-                        Label("Main", systemImage: "dollarsign.circle")
-                    }
-                ShiftView(viewModel: earningsVM)
-                    .tabItem {
-                        Label("Shifts", systemImage: "calendar")
-                    }
-
-                SettingsView(viewModel: settingsVM)
-                    .tabItem {
-                        Label("Settings", systemImage: "gear")
-                    }
-            }
-            .tabViewStyle(DefaultTabViewStyle()) // Native iOS tab style
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            MainView(vm: earningsVM, sm: settingsVM)
             .background(Color(.systemBackground))
-            .ignoresSafeArea()
+            
         }
     }
 }

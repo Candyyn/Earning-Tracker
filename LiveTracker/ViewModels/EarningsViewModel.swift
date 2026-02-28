@@ -26,7 +26,7 @@ class EarningsViewModel: ObservableObject {
     }
     
     func startTimer() {
-        timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+        timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
             .sink { [weak self] _ in
                 self?.updateEarnings()
             }
@@ -85,9 +85,12 @@ class EarningsViewModel: ObservableObject {
                 total += earningsForShift(from: segStart, to: segEnd)
             }
         }
-        
+        let defaults = UserDefaults(suiteName: "group.studio.magnusson.livetracker")
+        defaults?.set(total, forKey: "currentEarnings")
         currentEarnings = total
     }
+    
+
 
 
     
@@ -115,19 +118,45 @@ class EarningsViewModel: ObservableObject {
         let weekday = calendar.component(.weekday, from: date)
         var rate: Double
         
+        let selectedPay = settingsVM.getByMonth(date: date)!;
+        
+        //let selectedPay = settingsVM.settings.last!
+        
         if hour >= 8 && hour < 18 {
-            rate = settingsVM.settings.dayRate
-        } else if hour >= 18 && hour < 23 {
-            rate = settingsVM.settings.eveningRate
+            rate = selectedPay.dayRate
+        } else if hour >= 18 && hour < 24 {
+            rate = selectedPay.eveningRate
         } else {
-            rate = settingsVM.settings.nightRate
+            rate = selectedPay.nightRate
         }
         
         if weekday == 1 || weekday == 7 { // Sunday = 1, Saturday = 7
-            rate = settingsVM.settings.weekendBonus
+            rate = selectedPay.weekendBonus
         }
         
         return rate
+    }
+    
+    
+    func currentType(for date: Date) -> String {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: date)
+        let weekday = calendar.component(.weekday, from: date)
+        var type: String
+        
+        if hour >= 8 && hour < 18 {
+            type = "day"
+        } else if hour >= 18 && hour < 24 {
+            type = "evening"
+        } else {
+            type = "night"
+        }
+        
+        if weekday == 1 || weekday == 7 { // Sunday = 1, Saturday = 7
+            type = "weekend"
+        }
+        
+        return type
     }
     
     func secondsWorked(in shift: Shift, until now: Date) -> Int {
@@ -153,5 +182,15 @@ class EarningsViewModel: ObservableObject {
 extension Calendar {
     func startOfMonth(for date: Date) -> Date {
         return self.date(from: self.dateComponents([.year, .month], from: date))!
+    }
+}
+
+extension EarningsViewModel {
+    static var preview: EarningsViewModel {
+        let sm = SettingsViewModel()
+        let vm = EarningsViewModel(settingsVM: sm)
+        vm.currentEarnings = 1234.56
+        // Add other mock data setup here
+        return vm
     }
 }

@@ -13,6 +13,7 @@ struct ShiftView: View {
     @State private var editingShiftIndex: Int? = nil
     @State private var selectedMonth = Date()
     
+    
     var body: some View {
         Form {
             shiftFormSection
@@ -20,20 +21,76 @@ struct ShiftView: View {
         }
         .navigationTitle("Shifts")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            Task {
+                try? await CalendarManager.shared.requestAccess()
+                importCalendarShifts()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIApplication.willEnterForegroundNotification
+        )) { _ in
+            importCalendarShifts()
+        }
     }
 }
 
 // MARK: - Sections
 private extension ShiftView {
+    
+    func importCalendarShifts() {
+        let calendar = Calendar.current
+        let start = calendar.date(byAdding: .month, value: -6, to: Date())!
+        let end = calendar.date(byAdding: .month, value: 6, to: Date())!
+
+        do {
+            let calendarShifts = try CalendarManager.shared.fetchShifts(from: start, to: end)
+
+            for shift in calendarShifts {
+                if !viewModel.shifts.contains(where: {
+                    $0.calendarEventId == shift.calendarEventId
+                }) {
+                    viewModel.shifts.append(shift)
+                }
+            }
+        } catch {
+            print("Calendar import failed:", error)
+        }
+    }
+    
+    
     var shiftFormSection: some View {
+        
+        
+        
         Section(header: Text(editingShiftIndex == nil ? "New Shift" : "Edit Shift")) {
+            let maxTimeBetween = 24 * 60 * 60;
+            
             DatePicker("Start Time", selection: $start, displayedComponents: [.date, .hourAndMinute])
+                .onChange(of: start) { oldValue, newValue in
+                    if end > newValue.addingTimeInterval(TimeInterval(maxTimeBetween)) {
+                        end = newValue.addingTimeInterval(TimeInterval(maxTimeBetween))
+                    }
+                    
+                    if end < newValue {
+                        end = newValue
+                    }
+                }
             DatePicker("End Time", selection: $end, displayedComponents: [.date, .hourAndMinute])
             
             Toggle("Add Break", isOn: $includeBreak.animation())
             
             if includeBreak {
                 DatePicker("Break Start", selection: $breakStart, displayedComponents: [.date, .hourAndMinute])
+                    .onChange(of: breakStart) { oldValue, newValue in
+                        if breakEnd > newValue.addingTimeInterval(TimeInterval(maxTimeBetween)) {
+                            breakEnd = newValue.addingTimeInterval(TimeInterval(maxTimeBetween))
+                        }
+                        
+                        if breakEnd < newValue {
+                            breakEnd = newValue
+                        }
+                    }
                 DatePicker("Break End", selection: $breakEnd, displayedComponents: [.date, .hourAndMinute])
                 Toggle("Paid Break", isOn: $breakPaid)
             }
@@ -46,8 +103,12 @@ private extension ShiftView {
         }
     }
     
+
     var shiftsListSection: some View {
-        Group {
+        let calendar = Calendar.current
+        let selectedMonthStart = calendar.startOfMonth(for: selectedMonth)
+        let currentMonthStart = calendar.startOfMonth(for: Date())
+        return Group {
             if filteredShifts.isEmpty {
                 Section(header: monthHeader) {
                     Text("No shifts this month")
@@ -61,9 +122,8 @@ private extension ShiftView {
                     }
                     .onDelete(perform: deleteFilteredShifts)
                     
-                    if selectedMonth < Calendar.current.startOfMonth(for: Date()) {
-                        monthTotalRow
-                    }
+                    
+                    monthTotalRow
                 }
             }
         }
@@ -114,7 +174,7 @@ private extension ShiftView {
     }
     
     func shiftRow(for shift: Shift) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        /*VStack(alignment: .leading, spacing: 4) {
             Text(Self.formatShiftDate(shift))
                 .font(.headline)
             if let breakText = Self.formatBreak(shift) {
@@ -123,7 +183,9 @@ private extension ShiftView {
                     .foregroundStyle(.secondary)
             }
         }
-        .contentShape(Rectangle())
+        .contentShape(Rectangle())*/
+        ShiftCard(shift: shift, viewModel: viewModel)
+            .contentShape(Rectangle())
     }
     
     var monthTotalRow: some View {
@@ -144,7 +206,7 @@ private extension ShiftView {
         return viewModel.shifts.filter { shift in
             calendar.component(.month, from: shift.start) == calendar.component(.month, from: selectedMonth) &&
             calendar.component(.year, from: shift.start) == calendar.component(.year, from: selectedMonth)
-        }
+        }.sorted { $0.start < $1.start }
     }
     
     var totalEarningsForSelectedMonth: Double {
@@ -171,13 +233,20 @@ private extension ShiftView {
 // MARK: - Actions
 private extension ShiftView {
     func saveShift() {
-        let newShift = Shift(
+        var newShift = Shift(
             start: start,
             end: end,
             breakStart: includeBreak ? breakStart : nil,
             breakEnd: includeBreak ? breakEnd : nil,
             breakPaid: breakPaid
         )
+        
+        do {
+            let eventId = try CalendarManager.shared.save(newShift)
+            newShift.calendarEventId = eventId
+        } catch {
+            print("Calendar sync failed:", error)
+        }
         
         if let index = editingShiftIndex {
             viewModel.shifts[index] = newShift

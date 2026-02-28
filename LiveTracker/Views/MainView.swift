@@ -8,6 +8,7 @@ import SwiftUI
 
 struct MainView: View {
     @ObservedObject var vm: EarningsViewModel
+    @ObservedObject var sm: SettingsViewModel
     
     @State private var lastEarnings: Double = 0
     @State private var floatingText: String? = nil
@@ -15,6 +16,11 @@ struct MainView: View {
     @State private var randomXOffset: CGFloat = 0
     @State private var randomXOffsetStart: CGFloat = 0
     @State private var randomYOffset: CGFloat = 0
+    
+    @State private var showSettings = false
+    @State private var showShifts = false
+    
+    @State var animation = false
 
     
     var currencyFormater: NumberFormatter = {
@@ -28,7 +34,72 @@ struct MainView: View {
     
 
     
+    fileprivate func TextShimmer(duration: Double) -> ZStack<TupleView<(some View, some View)>> {
+        
+        let colors: [String: Color] = [
+            "day": .secondary,
+            "evening": .orange,
+            "night": .indigo,
+            "weekend": .pink,
+        ]
+        
+        let type = vm.currentType(for: Date())
+        
+        return ZStack {
+            
+            let text = "\(currencyFormater.string(from: vm.hourlyRate(for: Date()) as NSNumber) ?? "")/h \(vm.isOnBreak() ? " - Break" : "")"
+            
+            Text(text)
+                .contentTransition(.numericText(value: vm.hourlyRate(for: Date())))
+                .animation(.default, value: vm.currentEarnings)
+                //.font(.caption)
+                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 0) {
+                ForEach(0..<text.count,id: \.self){ index in
+                    Text(
+                        String(
+                            text[text.index(text.startIndex, offsetBy: index)]
+                        )
+                    )
+                    .contentTransition(.numericText(value: vm.hourlyRate(for: Date())))
+                    .animation(.default, value: vm.currentEarnings)
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundStyle(colors[type] ?? .secondary)
+                }
+            }
+            .allowsTightening(false)
+            .kerning(0)
+            .mask(
+                shimmerMask(for: text.count, color: colors[type] ?? .secondary, )
+            )
+            .onAppear(perform: {
+                
+                withAnimation(Animation.linear(duration: duration)
+                    .delay(2)
+                    .repeatForever(autoreverses: false)){ animation.toggle(); }
+            })
+        }
+    }
+    
+    @ViewBuilder
+    private func shimmerMask(for count: Int, color: Color ) -> some View {
+        let charWidth: CGFloat = 15 / 2 // adjust if needed
+        let distance = charWidth * CGFloat(count + 1)
+        
+        Rectangle()
+            .rotation(.init(degrees: 60))
+            .padding(5)
+            .offset(x: 5)
+            .offset(x: animation ? distance : -distance)
+    }
+    
+
     var body: some View {
+        
+        let currentSettings = sm.getByMonth(date: Date())!
+        
         ZStack {
             VStack {
                 
@@ -37,24 +108,84 @@ struct MainView: View {
                 Text("This Month's Earnings")
                     .font(.headline)
                 ZStack {
-                    Text("\(currencyFormater.string(from: vm.currentEarnings as NSNumber)!)")
+                    
+                    Text("\(currentSettings.showEarned ? currencyFormater.string(from: vm.currentEarnings as NSNumber)! : "***,**")")
                         .contentTransition(.numericText(value: vm.currentEarnings))
                         .font(.largeTitle)
                         .bold()
-                        .animation(.default, value: vm.currentEarnings)
+                        .animation(.easeInOut(duration: 0.2), value: vm.currentEarnings)
                     
                 }
                 
-                Text("\(currencyFormater.string(from: vm.hourlyRate(for: Date()) as NSNumber) ?? "")/h \(vm.isOnBreak() ? " - Break" : "")")
-                    .contentTransition(.numericText(value: vm.hourlyRate(for: Date())))
-                    .animation(.default, value: vm.currentEarnings)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                
+                
+                
+                TextShimmer(duration: 2)
+                
                 
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(.systemBackground))
             .ignoresSafeArea()
+            
+            
+            VStack {
+                            HStack {
+                                Button(action: {
+                                    showShifts.toggle()
+                                }) {
+                                    Image(systemName: "calendar")
+                                        .font(.title2)
+                                        .padding()
+                                }
+                                Spacer()
+                                Button(action: {
+                                    showSettings.toggle()
+                                }) {
+                                    Image(systemName: "gearshape")
+                                        .font(.title2)
+                                        .padding()
+                                }
+                                
+                            }
+                            Spacer()
+                        }
+            .sheet(isPresented: $showSettings) {
+                NavigationView {
+                    SettingsView(viewModel: sm)
+                        .toolbar {
+                            ToolbarItem {
+                                Button(action: {
+                                    showSettings.toggle();
+                                }) {
+                                    Text("Done")
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationBackgroundInteraction(.automatic)
+                .presentationBackground(.regularMaterial)
+            }
+            .sheet(isPresented: $showShifts) {
+                NavigationView {
+                    ShiftView(viewModel: vm)
+                        .toolbar {
+                            ToolbarItem {
+                                Button(action: {
+                                    showShifts.toggle();
+                                }) {
+                                    Text("Done")
+                                }
+                            }
+                        }
+                        
+                }
+                .presentationDetents([.medium, .large])
+                .presentationBackgroundInteraction(.automatic)
+                .presentationBackground(.regularMaterial)
+            }
+            
         }
         .onAppear {
             lastEarnings = vm.currentEarnings
@@ -73,3 +204,8 @@ struct MainView: View {
     }
 }
 
+#Preview {
+    let mockVM = EarningsViewModel.preview
+    let mockSM = SettingsViewModel.preview
+    MainView(vm: mockVM, sm: mockSM)
+}

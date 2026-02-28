@@ -14,4 +14,6 @@ struct Shift: Identifiable, Codable {
     var breakStart: Date?
     var breakEnd: Date?
     var breakPaid: Bool = false
+    
+    var calendarEventId: String?
 }
