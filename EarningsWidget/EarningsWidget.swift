@@ -8,49 +8,56 @@
 import WidgetKit
 import SwiftUI
 
-struct Provider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
-    }
-
-    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
-    }
-    
-    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
-        }
-
-        return Timeline(entries: entries, policy: .atEnd)
-    }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
-}
-
-struct SimpleEntry: TimelineEntry {
+struct EarningsEntry: TimelineEntry {
     let date: Date
-    let configuration: ConfigurationAppIntent
+    let earnings: Double
 }
 
-struct EarningsWidgetEntryView : View {
-    var entry: Provider.Entry
+class EarningsData {
+    static let shared = EarningsData()
+    
+    func loadEarnings() -> Double {
+        let defaults = UserDefaults(suiteName: "group.studio.magnusson.livetracker")
+        return defaults?.double(forKey: "currentEarnings") ?? 0
+    }
+}
 
+
+struct Provider: TimelineProvider {
+    func placeholder(in context: Context) -> EarningsEntry {
+        EarningsEntry(date: Date(), earnings: 1234.56)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (EarningsEntry) -> Void) {
+        completion(EarningsEntry(date: Date(), earnings: 1234.56))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<EarningsEntry>) -> Void) {
+        // Ideally fetch from shared storage (App Groups)
+        let currentEarnings = EarningsData.shared.loadEarnings()
+        let entry = EarningsEntry(date: Date(), earnings: currentEarnings)
+
+        // Refresh in 15 minutes
+        let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(900)))
+        completion(timeline)
+    }
+}
+
+struct EarningsWidgetEntryView: View {
+    var entry: EarningsEntry
+    
     var body: some View {
         VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+            Text("This Month's Earnings")
+                .font(.caption)
+            Text("\(entry.earnings, format: .currency(code: "SEK"))")
+                .font(.title3)
+                .bold()
+                .privacySensitive()
+        }
+        .padding()
+        .containerBackground(for: .widget) {   // 👈 required for widgets
+            Color.clear
         }
     }
 }
@@ -59,30 +66,12 @@ struct EarningsWidget: Widget {
     let kind: String = "EarningsWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
             EarningsWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
         }
+        .configurationDisplayName("Earnings")
+        .description("Shows your current earnings.")
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
-    }
-}
-
-#Preview(as: .systemSmall) {
-    EarningsWidget()
-} timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
-}

@@ -7,32 +7,39 @@
 
 import Foundation
 import SwiftUI
-import Combine
+import Observation
 
-class SettingsViewModel: ObservableObject {
-    @Published var settings: [PaySettings] {
+@Observable
+class SettingsViewModel {
+    var settings: [PaySettings] {
         didSet { save() }
     }
     
-    public func getByMonth(date: Date) -> PaySettings? {
-        return settings.first { $0.startRange <= date && date <= $0.endRange }
+    var showEarned: Bool {
+        didSet { UserDefaults.standard.set(showEarned, forKey: "ShowEarned") }
     }
     
     init() {
+        self.showEarned = UserDefaults.standard.object(forKey: "ShowEarned") as? Bool ?? true
+        
         if let data = UserDefaults.standard.data(forKey: "PaySettings") {
-            if let decodedArray = try? JSONDecoder().decode([PaySettings].self, from: data) {
-                settings = decodedArray
-            } else if var decodedSingle = try? JSONDecoder().decode(PaySettings.self, from: data) {
-                decodedSingle.startRange = Calendar.current.date(from: DateComponents(year: 1990, month: 1, day: 1))!
-                decodedSingle.endRange = Calendar.current.date(from: DateComponents(year: 2100, month: 1, day: 1))!
-                settings = [decodedSingle]
-                save() // Optionally, update storage to new format
+            if let decoded = try? JSONDecoder().decode([PaySettings].self, from: data), !decoded.isEmpty {
+                self.settings = decoded
+            } else if var single = try? JSONDecoder().decode(PaySettings.self, from: data) {
+                single.startRange = Self.fallbackStart
+                single.endRange = Self.fallbackEnd
+                self.settings = [single]
+                save()
             } else {
-                settings = [PaySettings(dayRate: 0, eveningRate: 0, nightRate: 0, weekendBonus: 0, showEarned: true, startRange: Calendar.current.date(from: DateComponents(year: 1990, month: 1, day: 1))!, endRange: Calendar.current.date(from: DateComponents(year: 2100, month: 1, day: 1))!)]
+                self.settings = [Self.makeDefault()]
             }
         } else {
-            settings = [PaySettings(dayRate: 0, eveningRate: 0, nightRate: 0, weekendBonus: 0, showEarned: true, startRange: Calendar.current.date(from: DateComponents(year: 1990, month: 1, day: 1))!, endRange: Calendar.current.date(from: DateComponents(year: 2100, month: 1, day: 1))!)]
+            self.settings = [Self.makeDefault()]
         }
+    }
+    
+    func paySettings(for date: Date) -> PaySettings? {
+        return settings.first { $0.startRange <= date && date <= $0.endRange }
     }
     
     func save() {
@@ -40,13 +47,16 @@ class SettingsViewModel: ObservableObject {
             UserDefaults.standard.set(encoded, forKey: "PaySettings")
         }
     }
-}
-
-extension SettingsViewModel {
-    static var preview: SettingsViewModel {
-        let sm = SettingsViewModel()
-        sm.settings = [PaySettings(dayRate: 0, eveningRate: 0, nightRate: 0, weekendBonus: 0, showEarned: true, startRange: Calendar.current.date(from: DateComponents(year: 1990, month: 1, day: 1))!, endRange: Calendar.current.date(from: DateComponents(year: 2100, month: 1, day: 1))!)]
-        // Add other mock setup if needed
-        return sm
+    
+    
+    private static var fallbackStart: Date {
+        Calendar.current.date(from: DateComponents(year: 1990, month: 1, day: 1)) ?? Date.distantPast
+    }
+    private static var fallbackEnd: Date {
+        Calendar.current.date(from: DateComponents(year: 2100, month: 1, day: 1)) ?? Date.distantFuture
+    }
+    
+    static func makeDefault() -> PaySettings {
+        PaySettings(startRange: fallbackStart, endRange: fallbackEnd)
     }
 }

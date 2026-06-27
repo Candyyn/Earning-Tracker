@@ -1,196 +1,157 @@
-//
-//  EarningsViewModel.swift
-//  Tracker
-//
-//  Created by Emil Magnusson on 2025-08-11.
-//
-
-import Foundation
-import Combine
 import SwiftUI
+import SwiftData
+import Combine
 
-class EarningsViewModel: ObservableObject {
-    @Published var shifts: [Shift] = [] {
-        didSet { saveShifts() }
-    }
-    @Published var currentEarnings: Double = 0.0
-    @Published var currentlyHourly: Double = 0.0
+@Observable
+@MainActor
+class EarningsViewModel {
+    let settingsVM: SettingsViewModel
+    let shiftRepository: ShiftRepository
+    let trackerService: EarningsTrackerService
+    let calculator: EarningsCalculating
     
-    private var timer: AnyCancellable?
-    private let settingsVM: SettingsViewModel
+    var currentEarnings: Double { trackerService.currentEarnings }
+    var currentlyHourly: Double { trackerService.currentlyHourly }
+    var currentShiftType: ShiftType { trackerService.currentShiftType }
+    var currentMonthShifts: [Shift] { shiftRepository.currentMonthShifts }
     
-    init(settingsVM: SettingsViewModel) {
+    init(settingsVM: SettingsViewModel, shiftRepository: ShiftRepository, trackerService: EarningsTrackerService, calculator: EarningsCalculating) {
         self.settingsVM = settingsVM
-        loadShifts()
-        startTimer()
+        self.shiftRepository = shiftRepository
+        self.trackerService = trackerService
+        self.calculator = calculator
+        
+        shiftRepository.refreshShifts()
+        trackerService.startTimer()
+        shiftRepository.importCalendarShifts()
+        
+        migrateUserDefaultsToSwiftDataIfNeeded()
     }
     
-    func startTimer() {
-        timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
-            .sink { [weak self] _ in
-                self?.updateEarnings()
+    var modelContext: ModelContext {
+        shiftRepository.modelContext
+    }
+    
+    // MARK: - Initial Migration (Legacy)
+    
+    private func migrateUserDefaultsToSwiftDataIfNeeded() {
+        if let data = UserDefaults.standard.data(forKey: "Shifts"),
+           let decoded = try? JSONDecoder().decode([LegacyShift].self, from: data) {
+            
+            let descriptor = FetchDescriptor<Shift>()
+            let existingCount = (try? modelContext.fetchCount(descriptor)) ?? 0
+            
+            if existingCount == 0 {
+                for legacyShift in decoded {
+                    let newShift = Shift(
+                        id: legacyShift.id,
+                        start: legacyShift.start,
+                        end: legacyShift.end,
+                        breakStart: legacyShift.breakStart,
+                        breakEnd: legacyShift.breakEnd,
+                        breakPaid: legacyShift.breakPaid,
+                        calendarEventId: legacyShift.calendarEventId
+                    )
+                    modelContext.insert(newShift)
+                }
+                do {
+                    try modelContext.save()
+                    UserDefaults.standard.removeObject(forKey: "Shifts")
+                } catch {
+                    print("Failed to save migrated shifts: \(error)")
+                }
+            } else {
+                UserDefaults.standard.removeObject(forKey: "Shifts")
             }
+        }
     }
     
-    func deleteShifts(at offsets: IndexSet) {
-        shifts.remove(atOffsets: offsets)
+    // MARK: - Shift Management
+    
+    func refreshShifts() {
+        shiftRepository.refreshShifts()
+        trackerService.invalidateCache()
+    }
+    
+    func importCalendarShifts() {
+        shiftRepository.importCalendarShifts()
     }
     
     func isOnBreak() -> Bool {
-        let now = Date()
-        
-        for shift in shifts {
-            // Only check active shift
-            if now >= shift.start && now <= shift.end {
-                if let bStart = shift.breakStart,
-                   let bEnd = shift.breakEnd,
-                   now >= bStart && now <= bEnd {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    
-    func updateEarnings() {
-        let now = Date()
-        let calendar = Calendar.current
-        var total: Double = 0
-        
-        for shift in shifts {
-            // Only include shifts in the current month
-            guard calendar.isDate(shift.start, equalTo: now, toGranularity: .month),
-                  calendar.isDate(shift.start, equalTo: now, toGranularity: .year) else {
-                continue
-            }
-            
-            if now < shift.start { continue }
-            
-            let workedUntil = min(now, shift.end)
-            var segments: [(Date, Date)] = [(shift.start, workedUntil)]
-            
-            // Handle unpaid breaks
-            if let bStart = shift.breakStart, let bEnd = shift.breakEnd, !shift.breakPaid {
-                segments = []
-                if shift.start < bStart {
-                    segments.append((shift.start, min(bStart, workedUntil)))
-                }
-                if workedUntil > bEnd {
-                    segments.append((max(bEnd, shift.start), workedUntil))
-                }
-            }
-            
-            for (segStart, segEnd) in segments {
-                total += earningsForShift(from: segStart, to: segEnd)
-            }
-        }
-        let defaults = UserDefaults(suiteName: "group.studio.magnusson.livetracker")
-        defaults?.set(total, forKey: "currentEarnings")
-        currentEarnings = total
+        trackerService.isOnBreak
     }
     
-
-
-
-    
-    func earningsForShift(from start: Date, to end: Date) -> Double {
-        var earnings: Double = 0
-        var currentTime = start
-        
-        while currentTime < end {
-            let rate = hourlyRate(for: currentTime)
-            let nextHour = Calendar.current.date(byAdding: .hour, value: 1, to: currentTime)!
-            let segmentEnd = min(end, nextHour)
-            
-            let seconds = segmentEnd.timeIntervalSince(currentTime)
-            earnings += (seconds / 3600.0) * rate
-            
-            currentTime = segmentEnd
-        }
-        
-        return earnings
-    }
+    // MARK: - Proxies for UI
     
     func hourlyRate(for date: Date) -> Double {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: date)
-        let weekday = calendar.component(.weekday, from: date)
-        var rate: Double
-        
-        let selectedPay = settingsVM.getByMonth(date: date)!;
-        
-        //let selectedPay = settingsVM.settings.last!
-        
-        if hour >= 8 && hour < 18 {
-            rate = selectedPay.dayRate
-        } else if hour >= 18 && hour < 24 {
-            rate = selectedPay.eveningRate
-        } else {
-            rate = selectedPay.nightRate
-        }
-        
-        if weekday == 1 || weekday == 7 { // Sunday = 1, Saturday = 7
-            rate = selectedPay.weekendBonus
-        }
-        
-        return rate
-    }
-    
-    
-    func currentType(for date: Date) -> String {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: date)
-        let weekday = calendar.component(.weekday, from: date)
-        var type: String
-        
-        if hour >= 8 && hour < 18 {
-            type = "day"
-        } else if hour >= 18 && hour < 24 {
-            type = "evening"
-        } else {
-            type = "night"
-        }
-        
-        if weekday == 1 || weekday == 7 { // Sunday = 1, Saturday = 7
-            type = "weekend"
-        }
-        
-        return type
-    }
-    
-    func secondsWorked(in shift: Shift, until now: Date) -> Int {
-        let start = max(shift.start, Calendar.current.startOfMonth(for: now))
-        let end = min(shift.end, now)
-        return max(0, Int(end.timeIntervalSince(start)))
-    }
-    
-    func saveShifts() {
-        if let encoded = try? JSONEncoder().encode(shifts) {
-            UserDefaults.standard.set(encoded, forKey: "Shifts")
+        calculator.hourlyRate(for: date, calendar: .current) { [weak self] d in
+            self?.settingsVM.paySettings(for: d)
         }
     }
     
-    func loadShifts() {
-        if let data = UserDefaults.standard.data(forKey: "Shifts"),
-           let decoded = try? JSONDecoder().decode([Shift].self, from: data) {
-            shifts = decoded
+    func currentType(for date: Date) -> ShiftType {
+        calculator.currentType(for: date)
+    }
+    
+    func earningsForFullShift(_ shift: Shift) -> Double {
+        let paySettingsProvider: (Date) -> PaySettings? = { [weak self] date in
+            self?.settingsVM.paySettings(for: date)
         }
+        return calculator.earningsForFullShift(shift, calendar: .current, paySettingsProvider: paySettingsProvider)
+    }
+    
+    // MARK: - Shift Month Stats
+    
+    func totalEarningsForShifts(_ shifts: [Shift]) -> Double {
+        let paySettingsProvider: (Date) -> PaySettings? = { [weak self] date in
+            self?.settingsVM.paySettings(for: date)
+        }
+        
+        return shifts.reduce(0) { total, shift in
+            let segments = calculator.workSegments(for: shift, workedUntil: shift.end)
+            return total + segments.reduce(0) {
+                $0 + calculator.earningsForShift(from: $1.0, to: $1.1, calendar: .current, paySettingsProvider: paySettingsProvider)
+            }
+        }
+    }
+
+    func workedHoursByType(for shifts: [Shift]) -> (day: Double, evening: Double, night: Double, weekend: Double, holiday: Double, holidayMajor: Double, total: Double) {
+        var day: Double = 0, evening: Double = 0, night: Double = 0, weekend: Double = 0, holiday: Double = 0, holidayMajor: Double = 0
+        
+        for shift in shifts {
+            for (segmentStart, segmentEnd) in calculator.workSegments(for: shift, workedUntil: shift.end) {
+                var current = segmentStart
+                while current < segmentEnd {
+                    let boundary = calculator.nextRateBoundary(after: current, calendar: Calendar.current)
+                    let segEnd = min(boundary, segmentEnd)
+                    let type = calculator.currentType(for: current)
+                    let seconds = segEnd.timeIntervalSince(current)
+                    let hours = seconds / 3600.0
+                    switch type {
+                    case .day: day += hours
+                    case .evening: evening += hours
+                    case .night: night += hours
+                    case .weekend: weekend += hours
+                    case .holiday: holiday += hours
+                    case .holidayMajor: holidayMajor += hours
+                    }
+                    current = segEnd
+                }
+            }
+        }
+        let total = day + evening + night + weekend + holiday + holidayMajor
+        return (day, evening, night, weekend, holiday, holidayMajor, total)
     }
 }
 
-extension Calendar {
-    func startOfMonth(for date: Date) -> Date {
-        return self.date(from: self.dateComponents([.year, .month], from: date))!
-    }
-}
+// MARK: - Legacy Migration
 
-extension EarningsViewModel {
-    static var preview: EarningsViewModel {
-        let sm = SettingsViewModel()
-        let vm = EarningsViewModel(settingsVM: sm)
-        vm.currentEarnings = 1234.56
-        // Add other mock data setup here
-        return vm
-    }
+struct LegacyShift: Codable, Identifiable {
+    var id: UUID
+    var start: Date
+    var end: Date
+    var breakStart: Date?
+    var breakEnd: Date?
+    var breakPaid: Bool
+    var calendarEventId: String?
 }

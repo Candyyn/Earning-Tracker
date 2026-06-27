@@ -12,7 +12,6 @@ import SwiftUI
 struct EarningsWidgetBundle: WidgetBundle {
     var body: some Widget {
         EarningsWidget()
-        EarningsWidgetControl()
         EarningsWidgetLiveActivity()
     }
 }

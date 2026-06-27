@@ -16,7 +16,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "20C657962E8D89F700787E38"
+               BlueprintIdentifier = "3F1C35B2D1C2C0FAD32415EA"
                BuildableName = "EarningsWidgetExtension.appex"
                BlueprintName = "EarningsWidgetExtension"
                ReferencedContainer = "container:LiveTracker.xcodeproj">
@@ -62,7 +62,7 @@
          BundleIdentifier = "com.apple.springboard">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "20C657962E8D89F700787E38"
+            BlueprintIdentifier = "3F1C35B2D1C2C0FAD32415EA"
             BuildableName = "EarningsWidgetExtension.appex"
             BlueprintName = "EarningsWidgetExtension"
             ReferencedContainer = "container:LiveTracker.xcodeproj">

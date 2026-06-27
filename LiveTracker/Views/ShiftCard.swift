@@ -5,117 +5,116 @@
 //  Created by Emil Magnusson on 2025-09-11.
 //
 import SwiftUI
+import SwiftData
+
+// MARK: - String Extension
 
 extension String {
     func capitalizingFirstLetter() -> String {
-      return prefix(1).uppercased() + self.lowercased().dropFirst()
-    }
-
-    mutating func capitalizeFirstLetter() {
-      self = self.capitalizingFirstLetter()
+        prefix(1).uppercased() + self.lowercased().dropFirst()
     }
 }
 
+// MARK: - Shared Formatters (allocated once)
 
+private enum ShiftFormatters {
+    static let currency: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = .current
+        return f
+    }()
 
-struct ShiftCard: View {
+    static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    static let day: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f
+    }()
+
+    static let month: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f
+    }()
+
+    static let weekday: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE"
+        return f
+    }()
+}
+
+// MARK: - ShiftCard View
+
+struct ShiftCard: View, Equatable {
     let shift: Shift
-    @ObservedObject var viewModel: EarningsViewModel
+    var viewModel: EarningsViewModel
     
+    static func == (lhs: ShiftCard, rhs: ShiftCard) -> Bool {
+        lhs.shift == rhs.shift
+    }
 
     var body: some View {
-        let shiftType = dominantType(for: shift)
+        let shiftType = shift.dominantShiftType ?? .day
+
         HStack {
             Image(systemName: iconName(for: shiftType))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 32, height: 32) // icon size
+                .frame(width: 32, height: 32)
                 .foregroundColor(iconColor(for: shiftType))
                 .padding(.leading, 8)
-            
+
             Divider()
                 .padding(.horizontal, 16)
-            
+
             VStack(alignment: .leading, spacing: 4) {
-                Text(topLine(for: shift)) // format from `shift`
+                Text(topLine(for: shift))
                     .font(.system(.caption, weight: .medium))
 
-                Text(bottomLine(for: shift)) // also from `shift`
+                Text(bottomLine(for: shift))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                
+
                 Text(earningsString(for: shift))
-                        .font(.headline)
-                        .foregroundStyle(.green)
+                    .font(.headline)
+                    .foregroundStyle(.green)
+                    .privacySensitive()
             }
-            
-            
-             // pushes VStack and icon apart
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabelText(for: shift, shiftType: shiftType))
     }
-    
-    
-    // MARK: - Helpers
-    
+
+    // MARK: - Earnings
+
     private func earningsString(for shift: Shift) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        
         let value = earnings(for: shift)
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return ShiftFormatters.currency.string(from: NSNumber(value: value)) ?? "\(value)"
     }
-    
+
     private func earnings(for shift: Shift) -> Double {
-    
-        if shift.breakPaid ||
-            shift.breakStart == nil ||
-            shift.breakEnd == nil {
-            
-            return viewModel.earningsForShift(
-                from: shift.start,
-                to: shift.end
-            )
-        }
-        
-        guard let breakStart = shift.breakStart,
-              let breakEnd = shift.breakEnd else {
-            return viewModel.earningsForShift(
-                from: shift.start,
-                to: shift.end
-            )
-        }
-        
-        // 1️⃣ Earnings before break
-        let beforeBreak = viewModel.earningsForShift(
-            from: shift.start,
-            to: breakStart
-        )
-        
-        // 2️⃣ Earnings after break
-        let afterBreak = viewModel.earningsForShift(
-            from: breakEnd,
-            to: shift.end
-        )
-        
-        return beforeBreak + afterBreak
+        viewModel.earningsForFullShift(shift)
     }
-    
+
+    // MARK: - Display Strings
 
     private func topLine(for shift: Shift) -> String {
-        let duration = durationString(for: shift)
-        let timeRange = timeRangeString(for: shift)
-        let dateRange = dateRangeString(for: shift)
-        return "\(duration) · \(timeRange) · \(dateRange)"
+        "\(durationString(for: shift)) · \(timeRangeString(for: shift)) · \(dateRangeString(for: shift))"
     }
 
     private func bottomLine(for shift: Shift) -> String {
         let weekday = weekdayString(for: shift.start)
-        let shiftType = dominantType(for: shift)
-        let capi = shiftType.capitalizingFirstLetter();
-        return "\(weekday) · \(capi) Shift"
+        let type = shift.dominantShiftType ?? .day
+        return "\(weekday) · \(type.displayName) Shift"
     }
 
     private func durationString(for shift: Shift) -> String {
@@ -131,113 +130,55 @@ struct ShiftCard: View {
     }
 
     private func timeRangeString(for shift: Shift) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return "\(formatter.string(from: shift.start))–\(formatter.string(from: shift.end))"
+        let f = ShiftFormatters.time
+        return "\(f.string(from: shift.start))–\(f.string(from: shift.end))"
     }
 
     private func dateRangeString(for shift: Shift) -> String {
-        let dayFormatter = DateFormatter()
-        dayFormatter.dateFormat = "d"
-        let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "MMM"
+        let startDay   = ShiftFormatters.day.string(from: shift.start)
+        let endDay     = ShiftFormatters.day.string(from: shift.end)
+        let startMonth = ShiftFormatters.month.string(from: shift.start)
+        let endMonth   = ShiftFormatters.month.string(from: shift.end)
 
-        let startDay = dayFormatter.string(from: shift.start)
-        let endDay = dayFormatter.string(from: shift.end)
-        let startMonth = monthFormatter.string(from: shift.start)
-        let endMonth = monthFormatter.string(from: shift.end)
-
-        if startDay == endDay && startMonth == endMonth {
-            // Same day + same month → just show one
+        if startDay == endDay, startMonth == endMonth {
             return "\(startDay) \(startMonth)"
         } else if startMonth == endMonth {
-            // Same month → "11–12 Sep"
             return "\(startDay)–\(endDay) \(startMonth)"
         } else {
-            // Different months → "30 Sep–1 Oct"
             return "\(startDay) \(startMonth)–\(endDay) \(endMonth)"
         }
     }
 
-
     private func weekdayString(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE"
-        return formatter.string(from: date)
-    }
-    
-    func dominantType(for shift: Shift) -> String {
-        let calendar = Calendar.current
-        
-        // Break shift into 15-min slices and count categories
-        let step: TimeInterval = 15 * 60
-        var counts: [String: TimeInterval] = ["day": 0, "evening": 0, "night": 0, "weekend": 0]
-        
-        var current = shift.start
-        while current < shift.end {
-            let next = current.addingTimeInterval(step)
-            let sliceEnd = min(next, shift.end)
-            let duration = sliceEnd.timeIntervalSince(current)
-            
-            let type = currentType(for: current, calendar: calendar) // reuse your earlier function
-            counts[type, default: 0] += duration
-            
-            current = next
-        }
-        
-        // Weekend rule: if all time is weekend, return weekend
-        if counts["weekend", default: 0] > 0 && (counts["day", default: 0] + counts["evening", default: 0] + counts["night", default: 0] == 0) {
-            return "weekend"
-        }
-        
-        // Otherwise pick the largest bucket
-        return counts.max(by: { $0.value < $1.value })?.key ?? "day"
+        ShiftFormatters.weekday.string(from: date)
     }
 
-    private func currentType(for date: Date, calendar: Calendar) -> String {
-        let hour = calendar.component(.hour, from: date)
-        let weekday = calendar.component(.weekday, from: date)
-        
-        if weekday == 1 || weekday == 7 {
-            return "weekend"
-        }
-        switch hour {
-        case 8..<18: return "day"
-        case 18..<24: return "evening"
-        default: return "night"
+    private func accessibilityLabelText(for shift: Shift, shiftType: ShiftType) -> String {
+        let dateStr = ShiftFormatters.weekday.string(from: shift.start) + ", " + DateFormatter.localizedString(from: shift.start, dateStyle: .medium, timeStyle: .none)
+        let startStr = ShiftFormatters.time.string(from: shift.start)
+        let endStr = ShiftFormatters.time.string(from: shift.end)
+        let earned = earningsString(for: shift)
+        return "Shift on \(dateStr) from \(startStr) to \(endStr), \(shiftType.displayName) shift, earned \(earned)."
+    }
+
+    // MARK: - Icon Helpers
+
+    func iconName(for type: ShiftType) -> String {
+        switch type {
+        case .day:     return "sun.max.fill"
+        case .evening: return "sunset.fill"
+        case .night:   return "moon.stars.fill"
+        case .weekend: return "sparkles"
+        case .holiday, .holidayMajor: return "star.fill"
         }
     }
-    
-    func iconName(for type: String) -> String {
-            switch type.lowercased() {
-            case "day":
-                return "sun.max.fill"
-            case "evening":
-                return "sunset.fill"
-            case "night":
-                return "moon.stars.fill"
-            case "weekend":
-                return "sparkles"
-            default:
-                return "questionmark.circle.fill"
-            }
-        }
 
-        func iconColor(for type: String) -> Color {
-            switch type.lowercased() {
-            case "day":
-                return .yellow
-            case "evening":
-                return .orange
-            case "night":
-                return .blue
-            case "weekend":
-                return .purple
-            default:
-                return .gray
-            }
+    func iconColor(for type: ShiftType) -> Color {
+        switch type {
+        case .day:     return .yellow
+        case .evening: return .orange
+        case .night:   return .blue
+        case .weekend, .holiday, .holidayMajor: return .purple
         }
-
+    }
 }
-
-    
