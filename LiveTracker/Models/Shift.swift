@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Shift: Identifiable, Equatable {
+final class Shift: Identifiable {
     var id: UUID
     var start: Date
     var end: Date
@@ -18,9 +18,19 @@ final class Shift: Identifiable, Equatable {
     var breakPaid: Bool
     
     var calendarEventId: String?
+    var calendarSyncIdentifier: String?
     var dominantShiftType: ShiftType?
     
-    init(id: UUID = UUID(), start: Date, end: Date, breakStart: Date? = nil, breakEnd: Date? = nil, breakPaid: Bool = false, calendarEventId: String? = nil) {
+    init(
+        id: UUID = UUID(),
+        start: Date,
+        end: Date,
+        breakStart: Date? = nil,
+        breakEnd: Date? = nil,
+        breakPaid: Bool = false,
+        calendarEventId: String? = nil,
+        calendarSyncIdentifier: String? = nil
+    ) {
         self.id = id
         self.start = start
         self.end = end
@@ -28,16 +38,34 @@ final class Shift: Identifiable, Equatable {
         self.breakEnd = breakEnd
         self.breakPaid = breakPaid
         self.calendarEventId = calendarEventId
+        self.calendarSyncIdentifier = calendarSyncIdentifier
         self.dominantShiftType = nil
     }
     
+    @MainActor
     func updateDominantType(holidayService: HolidayProviding) {
-        self.dominantShiftType = calculateDominantType(holidayService: holidayService)
+        dominantShiftType = Self.calculateDominantType(
+            start: start,
+            end: end,
+            holidayService: holidayService
+        )
     }
-    
-    private func calculateDominantType(holidayService: HolidayProviding) -> ShiftType {
+
+    @MainActor
+    static func calculateDominantType(
+        start: Date,
+        end: Date,
+        holidayService: HolidayProviding
+    ) -> ShiftType {
+        guard start < end else { return .day }
+
         let calendar = Calendar.current
         let step: TimeInterval = 15 * 60
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: end)
+        let holidays = ((startYear - 1)...(endYear + 1)).map {
+            holidayService.cachedHolidays(for: $0, calendar: calendar)
+        }
         var counts: [ShiftType: TimeInterval] = [
             .day: 0, .evening: 0, .night: 0, .weekend: 0, .holiday: 0, .holidayMajor: 0
         ]
@@ -48,7 +76,11 @@ final class Shift: Identifiable, Equatable {
             let sliceEnd = min(next, end)
             let duration = sliceEnd.timeIntervalSince(current)
 
-            let type = currentType(for: current, calendar: calendar, holidayService: holidayService)
+            let type = RateSchedule.standard.shiftType(
+                for: current,
+                calendar: calendar,
+                holidays: holidays
+            )
             counts[type, default: 0] += duration
 
             current = next
@@ -62,28 +94,5 @@ final class Shift: Identifiable, Equatable {
         if weekendOnly { return .weekend }
 
         return counts.max(by: { $0.value < $1.value })?.key ?? .day
-    }
-    
-    private func currentType(for date: Date, calendar: Calendar, holidayService: HolidayProviding) -> ShiftType {
-        let hour    = calendar.component(.hour, from: date)
-        let weekday = calendar.component(.weekday, from: date)
-        let year    = calendar.component(.year, from: date)
-
-        let holidays = holidayService.cachedHolidays(for: year, calendar: calendar)
-        
-        if holidays.isTierB(date: date, calendar: calendar) {
-            return .holidayMajor
-        }
-        if holidays.isTierA(date: date, calendar: calendar) {
-            return .holiday
-        }
-
-        if weekday == 1 || weekday == 7 { return .weekend }
-
-        switch hour {
-        case 8..<18:  return .day
-        case 18..<24: return .evening
-        default:      return .night
-        }
     }
 }

@@ -12,25 +12,25 @@ struct EarningsAuraWrapper: View {
     var vm: EarningsViewModel
     
     var body: some View {
-        let progress = min(vm.currentEarnings / 25000.0, 1.0)
+        let progress = min(vm.currentEarnings.doubleValue / 25000.0, 1.0)
         EarningsAuraView(shiftType: vm.currentType(for: Date()), progress: progress)
     }
 }
 
 struct EarningsDisplayView: View {
     var vm: EarningsViewModel
-    var currentSettings: PaySettings
+    let showsEarnings: Bool
     
     
     var body: some View {
         VStack(spacing: 16) {
-            Text("Earnings")
+            Text("Intjänat")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
             
-            Text("\(currentSettings.showEarned ? (ModernMainView.currencyFormatter.string(from: vm.currentEarnings as NSNumber) ?? "") : "***,**")")
-                .contentTransition(.numericText(value: vm.currentEarnings))
+            Text(showsEarnings ? formattedEarnings : "***,**")
+                .contentTransition(.numericText(value: vm.currentEarnings.doubleValue))
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .animation(.easeInOut(duration: 0.2), value: vm.currentEarnings)
                 .foregroundStyle(.primary)
@@ -40,25 +40,21 @@ struct EarningsDisplayView: View {
                 .font(.subheadline)
         }
     }
+
+    private var formattedEarnings: String {
+        SwedishMarket.currencyWithOre(vm.currentEarnings)
+    }
 }
 
 struct ModernMainView: View {
     var vm: EarningsViewModel
     var sm: SettingsViewModel
-    
+
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showSettings = false
     @State private var showShifts = false
     
-    static let currencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "kr"
-        return formatter
-    }()
-    
     var body: some View {
-        let currentSettings = sm.paySettings(for: Date()) ?? sm.settings.first ?? PaySettings(startRange: Date(), endRange: Date())
-        
         ZStack {
             // Background Aura
             EarningsAuraWrapper(vm: vm)
@@ -74,7 +70,7 @@ struct ModernMainView: View {
                 Spacer()
                 
                 // Central Glass Capsule
-                EarningsDisplayView(vm: vm, currentSettings: currentSettings)
+                EarningsDisplayView(vm: vm, showsEarnings: sm.showEarned)
                     .padding(.vertical, 40)
                 
                 Spacer()
@@ -89,9 +85,10 @@ struct ModernMainView: View {
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
                             .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
-                            .accessibilityLabel("Shifts")
+                            .accessibilityLabel("Arbetspass")
                     }
-                    
+                    .accessibilityIdentifier("dashboard.shifts")
+
                     Button(action: { showSettings.toggle() }) {
                         Image(systemName: "gearshape")
                             .font(.title2)
@@ -100,18 +97,19 @@ struct ModernMainView: View {
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
                             .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
-                            .accessibilityLabel("Settings")
+                            .accessibilityLabel("Inställningar")
                     }
+                    .accessibilityIdentifier("dashboard.settings")
                 }
                 .padding(.bottom, 40)
             }
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
-                SettingsView(viewModel: sm)
+                SettingsView(viewModel: sm, earningsViewModel: vm)
                     .toolbar {
                         ToolbarItem {
-                            Button("Done") { showSettings.toggle() }
+                            Button("Klar") { showSettings.toggle() }
                         }
                     }
             }
@@ -124,13 +122,34 @@ struct ModernMainView: View {
                 ShiftView(viewModel: vm)
                     .toolbar {
                         ToolbarItem {
-                            Button("Done") { showShifts.toggle() }
+                            Button("Klar") { showShifts.toggle() }
                         }
                     }
             }
             .presentationDetents([.medium, .large])
             .presentationBackgroundInteraction(.automatic)
             .presentationBackground(.regularMaterial)
+        }
+        .task {
+            vm.start()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                vm.start()
+            case .inactive, .background:
+                vm.stop()
+            @unknown default:
+                vm.stop()
+            }
+        }
+        .alert("Dataproblem", isPresented: Binding(
+            get: { vm.errorMessage != nil },
+            set: { if !$0 { vm.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(vm.errorMessage ?? "")
         }
     }
 }

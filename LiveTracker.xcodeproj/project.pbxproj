@@ -7,19 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A96DA1FDC9DB1CB37EBF6DB /* EarningsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 791D8B43D9B59AA62BEA0A8D /* EarningsWidget.swift */; };
-		24F6754191CDC2E1EC6DCE92 /* EarningsWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A575688D9750E25BD780D4B5 /* EarningsWidgetLiveActivity.swift */; };
-		28B1C924B81105B64573E360 /* EarningsWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF13BC095A05F63174F2D861 /* EarningsWidgetBundle.swift */; };
-		3C502FFB9C3C1F629CE3166B /* EarningsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 96915C3A84C51631A1E732B9 /* EarningsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		42AFDCB179ACB1FBA3A27535 /* EarningsWidgetAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66EA294E099D0FE07AF64B1E /* EarningsWidgetAttributes.swift */; };
 		728ABFE800A6BBF4D047BCB8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECBCED0CF9BA08FEF4D7C800 /* Foundation.framework */; };
-		743ACAC3F0D58363E7A25169 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93966E9E89E8AF6E6AC413F9 /* SwiftUI.framework */; };
-		79DC72E454958EC7B78013E7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECBCED0CF9BA08FEF4D7C800 /* Foundation.framework */; };
-		A80E1FF843277E5BBB672755 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86BC8A3EFBE05225CF7747FB /* WidgetKit.framework */; };
-		BAE9F27EF865C30453BA94CF /* ShiftType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FDC596A03E0480AC59BB2CE /* ShiftType.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		20CB69882E4A798B00204727 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 20CB696D2E4A798800204727 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 20CB69742E4A798800204727;
+			remoteInfo = LiveTracker;
+		};
 		776715C06BCA2501D0528534 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 20CB696D2E4A798800204727 /* Project object */;
@@ -29,33 +27,10 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		20C657AE2E8D89FA00787E38 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 12;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				3C502FFB9C3C1F629CE3166B /* EarningsWidgetExtension.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		1FDC596A03E0480AC59BB2CE /* ShiftType.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ShiftType.swift; path = LiveTracker/Models/ShiftType.swift; sourceTree = "<group>"; };
-		20C657992E8D89F700787E38 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
-		20C6579B2E8D89F800787E38 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		20CB69752E4A798800204727 /* LiveTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		20CB698E2E4A798B00204727 /* LiveTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiveTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38C0E80BB8BF53BB454993EA /* LiveTrackerTests.bundle */ = {isa = PBXFileReference; explicitFileType = "wrapper.plug-in"; includeInIndex = 0; name = LiveTrackerTests.bundle; path = LiveTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		66EA294E099D0FE07AF64B1E /* EarningsWidgetAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EarningsWidgetAttributes.swift; path = LiveTracker/Models/EarningsWidgetAttributes.swift; sourceTree = "<group>"; };
-		791D8B43D9B59AA62BEA0A8D /* EarningsWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EarningsWidget.swift; sourceTree = "<group>"; };
-		86BC8A3EFBE05225CF7747FB /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WidgetKit.framework; sourceTree = "<group>"; };
-		93966E9E89E8AF6E6AC413F9 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = SwiftUI.framework; sourceTree = "<group>"; };
-		96915C3A84C51631A1E732B9 /* EarningsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = EarningsWidgetExtension.appex; path = EarningsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		A575688D9750E25BD780D4B5 /* EarningsWidgetLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EarningsWidgetLiveActivity.swift; sourceTree = "<group>"; };
-		CF13BC095A05F63174F2D861 /* EarningsWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EarningsWidgetBundle.swift; sourceTree = "<group>"; };
 		ECBCED0CF9BA08FEF4D7C800 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
@@ -80,15 +55,11 @@
 		};
 		20CB69872E4A798B00204727 /* LiveTrackerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = LiveTrackerTests;
 			sourceTree = "<group>";
 		};
 		20CB69912E4A798B00204727 /* LiveTrackerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = LiveTrackerUITests;
 			sourceTree = "<group>";
 		};
@@ -102,13 +73,10 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A68E80AF6576B6AA124B9344 /* Frameworks */ = {
+		20CB698B2E4A798B00204727 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				79DC72E454958EC7B78013E7 /* Foundation.framework in Frameworks */,
-				A80E1FF843277E5BBB672755 /* WidgetKit.framework in Frameworks */,
-				743ACAC3F0D58363E7A25169 /* SwiftUI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -126,11 +94,7 @@
 		20C657982E8D89F700787E38 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				20C657992E8D89F700787E38 /* WidgetKit.framework */,
-				20C6579B2E8D89F800787E38 /* SwiftUI.framework */,
 				8EB8C9F32BFD6C64F2BA8DF6 /* iOS */,
-				86BC8A3EFBE05225CF7747FB /* WidgetKit.framework */,
-				93966E9E89E8AF6E6AC413F9 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -143,9 +107,6 @@
 				20CB69912E4A798B00204727 /* LiveTrackerUITests */,
 				20C657982E8D89F700787E38 /* Frameworks */,
 				20CB69762E4A798800204727 /* Products */,
-				BCB497F5C20AD736B44456FF /* EarningsWidget */,
-				66EA294E099D0FE07AF64B1E /* EarningsWidgetAttributes.swift */,
-				1FDC596A03E0480AC59BB2CE /* ShiftType.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -154,7 +115,7 @@
 			children = (
 				20CB69752E4A798800204727 /* LiveTracker.app */,
 				38C0E80BB8BF53BB454993EA /* LiveTrackerTests.bundle */,
-				96915C3A84C51631A1E732B9 /* EarningsWidgetExtension.appex */,
+				20CB698E2E4A798B00204727 /* LiveTrackerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -167,17 +128,6 @@
 			name = iOS;
 			sourceTree = "<group>";
 		};
-		BCB497F5C20AD736B44456FF /* EarningsWidget */ = {
-			isa = PBXGroup;
-			children = (
-				791D8B43D9B59AA62BEA0A8D /* EarningsWidget.swift */,
-				CF13BC095A05F63174F2D861 /* EarningsWidgetBundle.swift */,
-				A575688D9750E25BD780D4B5 /* EarningsWidgetLiveActivity.swift */,
-			);
-			name = EarningsWidget;
-			path = EarningsWidget;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -188,7 +138,6 @@
 				20CB69712E4A798800204727 /* Sources */,
 				20CB69722E4A798800204727 /* Frameworks */,
 				20CB69732E4A798800204727 /* Resources */,
-				20C657AE2E8D89FA00787E38 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -202,22 +151,26 @@
 			productReference = 20CB69752E4A798800204727 /* LiveTracker.app */;
 			productType = "com.apple.product-type.application";
 		};
-		3F1C35B2D1C2C0FAD32415EA /* EarningsWidgetExtension */ = {
+		20CB698D2E4A798B00204727 /* LiveTrackerUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 1073B63CF7520C2CF87C64D9 /* Build configuration list for PBXNativeTarget "EarningsWidgetExtension" */;
+			buildConfigurationList = 20CB69942E4A798B00204727 /* Build configuration list for PBXNativeTarget "LiveTrackerUITests" */;
 			buildPhases = (
-				FBB2C26BB4589A99B343085E /* Sources */,
-				A68E80AF6576B6AA124B9344 /* Frameworks */,
-				AE7236A9BC39AB89289221B3 /* Resources */,
+				20CB698A2E4A798B00204727 /* Sources */,
+				20CB698B2E4A798B00204727 /* Frameworks */,
+				20CB698C2E4A798B00204727 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				20CB69892E4A798B00204727 /* PBXTargetDependency */,
 			);
-			name = EarningsWidgetExtension;
-			productName = EarningsWidgetExtension;
-			productReference = 96915C3A84C51631A1E732B9 /* EarningsWidgetExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
+			fileSystemSynchronizedGroups = (
+				20CB69912E4A798B00204727 /* LiveTrackerUITests */,
+			);
+			name = LiveTrackerUITests;
+			productName = LiveTrackerUITests;
+			productReference = 20CB698E2E4A798B00204727 /* LiveTrackerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		DAB219DABECAD0A7B3AB8889 /* LiveTrackerTests */ = {
 			isa = PBXNativeTarget;
@@ -253,6 +206,10 @@
 					20CB69742E4A798800204727 = {
 						CreatedOnToolsVersion = 26.0;
 					};
+					20CB698D2E4A798B00204727 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 20CB69742E4A798800204727;
+					};
 					DAB219DABECAD0A7B3AB8889 = {
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = 20CB69742E4A798800204727;
@@ -260,10 +217,10 @@
 				};
 			};
 			buildConfigurationList = 20CB69702E4A798800204727 /* Build configuration list for PBXProject "LiveTracker" */;
-			developmentRegion = en;
+			developmentRegion = sv;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				sv,
 				Base,
 			);
 			mainGroup = 20CB696C2E4A798800204727;
@@ -275,7 +232,7 @@
 			targets = (
 				20CB69742E4A798800204727 /* LiveTracker */,
 				DAB219DABECAD0A7B3AB8889 /* LiveTrackerTests */,
-				3F1C35B2D1C2C0FAD32415EA /* EarningsWidgetExtension */,
+				20CB698D2E4A798B00204727 /* LiveTrackerUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -288,14 +245,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		25D43CF5560B30F48E542560 /* Resources */ = {
+		20CB698C2E4A798B00204727 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AE7236A9BC39AB89289221B3 /* Resources */ = {
+		25D43CF5560B30F48E542560 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -312,22 +269,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		DC07CC1713F1C41EA56B414A /* Sources */ = {
+		20CB698A2E4A798B00204727 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FBB2C26BB4589A99B343085E /* Sources */ = {
+		DC07CC1713F1C41EA56B414A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A96DA1FDC9DB1CB37EBF6DB /* EarningsWidget.swift in Sources */,
-				28B1C924B81105B64573E360 /* EarningsWidgetBundle.swift in Sources */,
-				24F6754191CDC2E1EC6DCE92 /* EarningsWidgetLiveActivity.swift in Sources */,
-				42AFDCB179ACB1FBA3A27535 /* EarningsWidgetAttributes.swift in Sources */,
-				BAE9F27EF865C30453BA94CF /* ShiftType.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,6 +291,11 @@
 			name = LiveTracker;
 			target = 20CB69742E4A798800204727 /* LiveTracker */;
 			targetProxy = 776715C06BCA2501D0528534 /* PBXContainerItemProxy */;
+		};
+		20CB69892E4A798B00204727 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 20CB69742E4A798800204727 /* LiveTracker */;
+			targetProxy = 20CB69882E4A798B00204727 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -360,6 +317,44 @@
 				WRAPPER_EXTENSION = xctest;
 			};
 			name = Debug;
+		};
+		20CB69922E4A798B00204727 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DJPEVNJ3YL;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.magnusson.LiveTrackerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = LiveTracker;
+			};
+			name = Debug;
+		};
+		20CB69932E4A798B00204727 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DJPEVNJ3YL;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.magnusson.LiveTrackerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = LiveTracker;
+			};
+			name = Release;
 		};
 		20CB69962E4A798B00204727 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -488,7 +483,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = LiveTracker/LiveTracker.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -497,12 +491,12 @@
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LiveTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Live Tracker";
+				INFOPLIST_KEY_CFBundleDisplayName = "Intjänat";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Sync shift with calendar";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Intjänat använder kalenderåtkomst bara när du ansluter Kalender, för att skapa, uppdatera, ta bort och importera dina arbetspass.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Intjänat använder kalenderåtkomst bara när du ansluter Kalender, för att skapa, uppdatera, ta bort och importera dina arbetspass.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -510,7 +504,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.6;
+				MARKETING_VERSION = 1.3.10;
 				PRODUCT_BUNDLE_IDENTIFIER = studio.magnusson.LiveTrack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -522,7 +516,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -533,7 +527,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = LiveTracker/LiveTracker.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -542,12 +535,12 @@
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LiveTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Live Tracker";
+				INFOPLIST_KEY_CFBundleDisplayName = "Intjänat";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Sync shift with calendar";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Intjänat använder kalenderåtkomst bara när du ansluter Kalender, för att skapa, uppdatera, ta bort och importera dina arbetspass.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Intjänat använder kalenderåtkomst bara när du ansluter Kalender, för att skapa, uppdatera, ta bort och importera dina arbetspass.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -555,8 +548,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.6;
-				ONLY_ACTIVE_ARCH = YES;
+				MARKETING_VERSION = 1.3.10;
 				PRODUCT_BUNDLE_IDENTIFIER = studio.magnusson.LiveTrack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -568,7 +560,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -592,72 +584,23 @@
 			};
 			name = Release;
 		};
-		82793588F108603667B9DEFB /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = EarningsWidgetExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DJPEVNJ3YL;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = EarningsWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.3.6;
-				PRODUCT_BUNDLE_IDENTIFIER = studio.magnusson.LiveTrack.EarningsWidgetExtension;
-				PRODUCT_NAME = EarningsWidgetExtension;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-				WRAPPER_EXTENSION = appex;
-			};
-			name = Debug;
-		};
-		EB169D2FA5BA38F2B9A293C6 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = EarningsWidgetExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DJPEVNJ3YL;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = EarningsWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.3.6;
-				PRODUCT_BUNDLE_IDENTIFIER = studio.magnusson.LiveTrack.EarningsWidgetExtension;
-				PRODUCT_NAME = EarningsWidgetExtension;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-				VALIDATE_PRODUCT = YES;
-				WRAPPER_EXTENSION = appex;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1073B63CF7520C2CF87C64D9 /* Build configuration list for PBXNativeTarget "EarningsWidgetExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				EB169D2FA5BA38F2B9A293C6 /* Release */,
-				82793588F108603667B9DEFB /* Debug */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		20CB69702E4A798800204727 /* Build configuration list for PBXProject "LiveTracker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				20CB69962E4A798B00204727 /* Debug */,
 				20CB69972E4A798B00204727 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		20CB69942E4A798B00204727 /* Build configuration list for PBXNativeTarget "LiveTrackerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				20CB69922E4A798B00204727 /* Debug */,
+				20CB69932E4A798B00204727 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

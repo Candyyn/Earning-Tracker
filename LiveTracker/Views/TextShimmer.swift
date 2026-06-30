@@ -25,18 +25,18 @@ struct TextShimmer: View {
     }
 
     var body: some View {
-        let text = "\(ModernMainView.currencyFormatter.string(from: vm.currentlyHourly as NSNumber) ?? "")/h \(vm.isOnBreak() ? " - Break" : "")"
+        let text = "\(SwedishMarket.currencyWithOre(vm.currentlyHourly))/tim\(vm.isOnBreak() ? " - rast" : "")"
         
         ZStack {
             Text(text)
-                .contentTransition(.numericText(value: vm.currentlyHourly))
+                .contentTransition(.numericText(value: vm.currentlyHourly.doubleValue))
                 .animation(.default, value: vm.currentEarnings)
                 .font(.system(size: 15, weight: .bold, design: .monospaced))
                 .foregroundColor(.secondary)
             
             if !reduceMotion {
                 Text(text)
-                    .contentTransition(.numericText(value: vm.currentlyHourly))
+                    .contentTransition(.numericText(value: vm.currentlyHourly.doubleValue))
                     .animation(.default, value: vm.currentEarnings)
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .foregroundStyle(shimmerColor)

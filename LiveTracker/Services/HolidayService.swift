@@ -10,7 +10,7 @@ struct HolidayDates {
     }
 
     init(year: Int, calendar: Calendar) {
-        let easter = Self.easterSunday(year: year)
+        let easter = Self.easterSunday(year: year, calendar: calendar)
 
         let tierADays: [Date] = [
             Self.makeDate(year: year, month: 1, day: 6, calendar: calendar),
@@ -85,7 +85,7 @@ struct HolidayDates {
         (tierARanges + tierBRanges).flatMap { [$0.start, $0.end] }
     }
 
-    static func easterSunday(year: Int) -> Date {
+    static func easterSunday(year: Int, calendar: Calendar = .current) -> Date {
         let a = year % 19
         let b = year / 100
         let c = year % 100
@@ -100,15 +100,16 @@ struct HolidayDates {
         let m = (a + 11 * h + 22 * l) / 451
         let month = (h + l - 7 * m + 114) / 31
         let day   = ((h + l - 7 * m + 114) % 31) + 1
-        return Calendar.current.date(from: DateComponents(year: year, month: month, day: day)) ?? Date()
+        return makeDate(year: year, month: month, day: day, calendar: calendar)
     }
 
     static func ascensionDay(year: Int, calendar: Calendar) -> Date {
-        calendar.date(byAdding: .day, value: 39, to: easterSunday(year: year)) ?? Date()
+        let easter = easterSunday(year: year, calendar: calendar)
+        return calendar.date(byAdding: .day, value: 39, to: easter) ?? easter
     }
 
     static func allSaintsDay(year: Int, calendar: Calendar) -> Date {
-        let base = calendar.date(from: DateComponents(year: year, month: 10, day: 31)) ?? Date()
+        let base = makeDate(year: year, month: 10, day: 31, calendar: calendar)
         for offset in 0..<7 {
             let candidate = calendar.date(byAdding: .day, value: offset, to: base) ?? base
             if calendar.component(.weekday, from: candidate) == 7 { return candidate }
@@ -122,7 +123,7 @@ struct HolidayDates {
                 if calendar.component(.weekday, from: candidate) == 6 { return candidate }
             }
         }
-        return calendar.date(from: DateComponents(year: year, month: 6, day: 19)) ?? Date()
+        return makeDate(year: year, month: 6, day: 19, calendar: calendar)
     }
 
     static func nextWeekday(after date: Date, calendar: Calendar) -> Date {
@@ -135,20 +136,36 @@ struct HolidayDates {
     }
 
     static func makeDate(year: Int, month: Int, day: Int, calendar: Calendar) -> Date {
-        calendar.date(from: DateComponents(year: year, month: month, day: day)) ?? Date()
+        guard let date = calendar.date(
+            from: DateComponents(year: year, month: month, day: day)
+        ) else {
+            preconditionFailure("Unable to construct \(year)-\(month)-\(day) with \(calendar.identifier)")
+        }
+        return date
     }
 }
 
-class HolidayService: HolidayProviding {
-    private var holidayCache: [Int: HolidayDates] = [:]
+final class HolidayService: HolidayProviding {
+    private struct CacheKey: Hashable {
+        let year: Int
+        let calendarIdentifier: String
+        let timeZoneIdentifier: String
+    }
+
+    private var holidayCache: [CacheKey: HolidayDates] = [:]
     
     init() {}
     
     func cachedHolidays(for year: Int, calendar: Calendar) -> HolidayDates {
-        if let cached = holidayCache[year] { return cached }
-        let h = HolidayDates(year: year, calendar: calendar)
-        holidayCache[year] = h
-        return h
+        let key = CacheKey(
+            year: year,
+            calendarIdentifier: String(describing: calendar.identifier),
+            timeZoneIdentifier: calendar.timeZone.identifier
+        )
+        if let cached = holidayCache[key] { return cached }
+        let holidays = HolidayDates(year: year, calendar: calendar)
+        holidayCache[key] = holidays
+        return holidays
     }
     
     func invalidateCache() {

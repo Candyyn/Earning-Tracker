@@ -2,159 +2,192 @@ import SwiftUI
 
 struct SettingsView: View {
     @Bindable var viewModel: SettingsViewModel
-    
-    @State private var selectedIndex = 0
-    @State private var showDeleteConfirmation = false
-    
+    var earningsViewModel: EarningsViewModel
+
+    @State private var pendingDeletion: PaySettings?
+    @State private var calendarErrorMessage: String?
+
     var body: some View {
         Form {
-            PaySettingsManagementSection(
-                viewModel: viewModel,
-                selectedIndex: $selectedIndex,
-                showDeleteConfirmation: $showDeleteConfirmation,
-                onNewSetting: createNewPaySetting
-            )
-            
-            Section(header: Text("Gross Hourly Rate"), footer: Text("Enter your gross hourly rate.")) {
-                LabeledContent {
-                    TextField("0", value: $viewModel.settings[safeIndex].hourlyRate, format: .currency(code: "SEK"))
-                        .multilineTextAlignment(.trailing)
-                        .keyboardType(.decimalPad)
-                        .onChange(of: viewModel.settings[safeIndex].hourlyRate) { _, _ in
-                            viewModel.settings[safeIndex].recalculateRates()
-                        }
-                } label: {
-                    Label("Hourly Rate", systemImage: "banknote")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.green)
-                }
-            }
-            
-            Section(header: Text("Net rates (per hour)"), footer: VStack(alignment: .leading, spacing: 4) {
-                Text("OB supplements:")
-                Text("* Evening Mon-Fri 18-00: salary / 600")
-            }.font(.caption2)) {
-                rateRow(label: Label("Day (07-18)", systemImage: "sun.max.fill").symbolRenderingMode(.hierarchical).foregroundStyle(.yellow), value: $viewModel.settings[safeIndex].dayRate)
-                rateRow(label: Label("Evening (18-23)", systemImage: "sunset.fill").symbolRenderingMode(.hierarchical).foregroundStyle(.orange), value: $viewModel.settings[safeIndex].eveningRate)
-                rateRow(label: Label("Night (00-07)", systemImage: "moon.fill").symbolRenderingMode(.hierarchical).foregroundStyle(.indigo), value: $viewModel.settings[safeIndex].nightRate)
-                rateRow(label: Label("Weekend", systemImage: "sparkles").symbolRenderingMode(.hierarchical).foregroundStyle(.pink), value: $viewModel.settings[safeIndex].weekendRate)
-                rateRow(label: Label("Holiday", systemImage: "flag.fill").symbolRenderingMode(.hierarchical).foregroundStyle(.red), value: $viewModel.settings[safeIndex].holidayRateA)
-                rateRow(label: Label("Holiday (Major)", systemImage: "star.fill").symbolRenderingMode(.hierarchical).foregroundStyle(.purple), value: $viewModel.settings[safeIndex].holidayRateB)
-            }
-            
-            Section(header: Text("Validity Period"), footer: Text("The date range during which this pay settings applies.")) {
-                DatePicker("Start Date", selection: $viewModel.settings[safeIndex].startRange, displayedComponents: .date)
-                DatePicker("End Date", selection: $viewModel.settings[safeIndex].endRange, displayedComponents: .date)
-            }
-            
-            Section(footer: Text("Show or hide the earned amount on the main screen.")) {
-                Toggle(isOn: $viewModel.showEarned) {
-                    Label("Show Earned", systemImage: viewModel.showEarned ? "eye.fill" : "eye.slash.fill")
-                }
-            }
+            payPeriodsSection
+            financialToolsSection
+            displaySection
+            calendarSection
         }
-        .navigationTitle("Settings")
+        .accessibilityIdentifier("settings.list")
+        .navigationTitle("Inställningar")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
+        .onAppear {
+            earningsViewModel.calendarSync.refreshAuthorizationState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            earningsViewModel.calendarSync.refreshAuthorizationState()
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.createPayPeriod()
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Lägg till löneperiod")
+                .accessibilityIdentifier("settings.addPayPeriod")
+            }
+        }
         .confirmationDialog(
-            "Delete Pay Setting",
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) { deleteCurrentPaySetting() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This pay setting will be permanently removed.")
+            "Ta bort löneperiod?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDeletion
+        ) { setting in
+            Button("Ta bort löneperiod", role: .destructive) {
+                viewModel.deletePayPeriod(id: setting.id)
+                pendingDeletion = nil
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: { setting in
+            Text("Angränsande löneperiod förlängs så att lönehistoriken förblir sammanhängande.")
         }
-    }
-    
-    var safeIndex: Int {
-        max(0, min(selectedIndex, viewModel.settings.count - 1))
-    }
-    
-    private func rateRow<L: View>(label: L, value: Binding<Double>) -> some View {
-        LabeledContent {
-            TextField("0", value: value, format: .currency(code: "SEK"))
-                .multilineTextAlignment(.trailing)
-                .keyboardType(.decimalPad)
-        } label: {
-            label
-        }
-    }
-    
-    private func createNewPaySetting() {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: now) else { return }
-        guard let startOfNextMonth = calendar.date(
-            from: calendar.dateComponents(
-                [.year, .month],
-                from: nextMonth
-            )
-        ) else { return }
-        
-        if !viewModel.settings.isEmpty {
-            let endOfThisMonth = calendar.date(
-                byAdding: .day, value: -1, to: startOfNextMonth
-            ) ?? now
-            viewModel.settings[safeIndex].endRange = endOfThisMonth
-        }
-        
-        let newEnd = calendar.date(byAdding: .year, value: 10, to: startOfNextMonth) ?? startOfNextMonth
-        let rate = viewModel.settings.isEmpty ? 0 : viewModel.settings[safeIndex].hourlyRate
-        
-        var newSetting = PaySettings(startRange: startOfNextMonth, endRange: newEnd)
-        newSetting.hourlyRate = rate
-        newSetting.recalculateRates()
-        
-        viewModel.settings.append(newSetting)
-        selectedIndex = viewModel.settings.count - 1
-    }
-    
-    private func deleteCurrentPaySetting() {
-        guard viewModel.settings.count > 1 else { return }
-        let idx = max(0, min(selectedIndex, viewModel.settings.count - 1))
-        if idx > 0 {
-            let deleted = viewModel.settings[idx]
-            viewModel.settings[idx - 1].endRange = deleted.endRange
-        }
-        viewModel.settings.remove(at: idx)
-        selectedIndex = min(idx, viewModel.settings.count - 1)
-    }
-}
-
-// MARK: - Subviews
-
-struct PaySettingsManagementSection: View {
-    @Bindable var viewModel: SettingsViewModel
-    @Binding var selectedIndex: Int
-    @Binding var showDeleteConfirmation: Bool
-    var onNewSetting: () -> Void
-    
-    var body: some View {
-        Section(header: Text("Pay settings"), footer: Text("Each pay setting covers a date range with its own hourly rate.")) {
-            Picker("Select", selection: $selectedIndex) {
-                ForEach(Array(viewModel.settings.enumerated()), id: \.offset) { index, setting in
-                    Text(periodLabel(for: setting)).tag(index)
+        .alert("Inställningsproblem", isPresented: Binding(
+            get: {
+                viewModel.persistenceError != nil ||
+                viewModel.periodErrorMessage != nil ||
+                calendarErrorMessage != nil
+            },
+            set: { isPresented in
+                if !isPresented {
+                    viewModel.persistenceError = nil
+                    viewModel.periodErrorMessage = nil
+                    calendarErrorMessage = nil
                 }
             }
-
-            Button(action: onNewSetting) {
-                Label("New Pay Setting", systemImage: "plus.circle.fill")
-            }
-            Button(role: .destructive) {
-                showDeleteConfirmation = true
-            } label: {
-                Label("Delete Pay Setting", systemImage: "trash")
-            }
-            .disabled(viewModel.settings.count <= 1)
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(
+                viewModel.persistenceError ??
+                viewModel.periodErrorMessage ??
+                calendarErrorMessage ?? ""
+            )
         }
     }
-    
-    private func periodLabel(for setting: PaySettings) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "MMM yyyy"
-        return "\(fmt.string(from: setting.startRange)) - \(fmt.string(from: setting.endRange))"
+
+    private var payPeriodsSection: some View {
+        Section {
+            ForEach(viewModel.settings.sorted(by: { $0.startRange > $1.startRange })) { setting in
+                NavigationLink {
+                    PayPeriodDetailView(viewModel: viewModel, payPeriodID: setting.id)
+                } label: {
+                    PayPeriodRow(setting: setting, isActive: viewModel.paySettings(for: .now)?.id == setting.id)
+                }
+                .accessibilityIdentifier("settings.payPeriodRow")
+                .swipeActions {
+                    Button("Ta bort", systemImage: "trash", role: .destructive) {
+                        pendingDeletion = setting
+                    }
+                    .disabled(viewModel.settings.count == 1)
+                }
+            }
+        } header: {
+            Text("Löneperioder")
+        } footer: {
+            Text("Rätt löneperiod väljs automatiskt utifrån när varje pass ligger.")
+        }
+    }
+
+    private var displaySection: some View {
+        Section("Visning") {
+            Toggle(isOn: $viewModel.showEarned) {
+                Label(
+                    "Visa intjänat",
+                    systemImage: viewModel.showEarned ? "eye" : "eye.slash"
+                )
+            }
+            .accessibilityHint("Styr om intjänat belopp visas på startsidan.")
+        }
+    }
+
+    private var financialToolsSection: some View {
+        Section("Ekonomiska verktyg") {
+            NavigationLink {
+                TaxRefundView(earningsViewModel: earningsViewModel)
+            } label: {
+                Label("Skatteåterbäring", systemImage: "building.columns")
+            }
+            .accessibilityIdentifier("settings.taxRefund")
+        }
+    }
+
+    @ViewBuilder
+    private var calendarSection: some View {
+        @Bindable var calendarSync = earningsViewModel.calendarSync
+
+        Section {
+            LabeledContent {
+                HStack(spacing: 8) {
+                    if calendarSync.state == .syncing {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Text(calendarSync.state.title)
+                        .foregroundStyle(.secondary)
+                }
+            } label: {
+                Label("Kalendersynk", systemImage: calendarSync.state.systemImage)
+            }
+
+            switch calendarSync.state {
+            case .disconnected:
+                Button("Anslut kalender", systemImage: "calendar.badge.plus") {
+                    connectCalendar()
+                }
+            case .denied:
+                Button("Öppna Inställningar", systemImage: "gear") {
+                    openSystemSettings()
+                }
+            case .connected, .failed:
+                Button("Synka nu", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") {
+                    synchronizeCalendar()
+                }
+                Button("Koppla från kalender", systemImage: "calendar.badge.minus", role: .destructive) {
+                    calendarSync.disconnect()
+                }
+            case .syncing:
+                EmptyView()
+            }
+        } header: {
+            Text("Kalender")
+        } footer: {
+            Text("När kalendern är ansluten synkas passen med kalendern Arbetspass på den här enheten.")
+        }
+    }
+
+    private func connectCalendar() {
+        Task {
+            do {
+                try await earningsViewModel.connectCalendar()
+            } catch {
+                calendarErrorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func synchronizeCalendar() {
+        Task {
+            do {
+                try await earningsViewModel.synchronizeCalendarIfEnabled()
+            } catch {
+                calendarErrorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 }

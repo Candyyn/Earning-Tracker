@@ -1,0 +1,122 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "1cec5bb766943e806dbd51f9ed417d04",
+    "entities": [
+      {
+        "tableName": "shifts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `startEpochMillis` INTEGER NOT NULL, `endEpochMillis` INTEGER NOT NULL, `breakStartEpochMillis` INTEGER, `breakEndEpochMillis` INTEGER, `breakPaid` INTEGER NOT NULL, `calendarEventId` TEXT, `calendarSyncIdentifier` TEXT, `dominantShiftType` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startEpochMillis",
+            "columnName": "startEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endEpochMillis",
+            "columnName": "endEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "breakStartEpochMillis",
+            "columnName": "breakStartEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "breakEndEpochMillis",
+            "columnName": "breakEndEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "breakPaid",
+            "columnName": "breakPaid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "calendarEventId",
+            "columnName": "calendarEventId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "calendarSyncIdentifier",
+            "columnName": "calendarSyncIdentifier",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dominantShiftType",
+            "columnName": "dominantShiftType",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "pay_periods",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `grossHourlyRate` REAL NOT NULL, `effectiveStartEpochMillis` INTEGER NOT NULL, `effectiveEndEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grossHourlyRate",
+            "columnName": "grossHourlyRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveStartEpochMillis",
+            "columnName": "effectiveStartEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveEndEpochMillis",
+            "columnName": "effectiveEndEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_pay_periods_effectiveStartEpochMillis",
+            "unique": true,
+            "columnNames": [
+              "effectiveStartEpochMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_pay_periods_effectiveStartEpochMillis` ON `${TABLE_NAME}` (`effectiveStartEpochMillis`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1cec5bb766943e806dbd51f9ed417d04')"
+    ]
+  }
+}

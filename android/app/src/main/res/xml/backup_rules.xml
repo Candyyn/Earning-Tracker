@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="database" path="livetracker.db" />
+    <include domain="database" path="livetracker.db-shm" />
+    <include domain="database" path="livetracker.db-wal" />
+    <include domain="file" path="datastore/app_preferences.preferences_pb" />
+</full-backup-content>

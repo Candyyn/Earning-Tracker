@@ -19,7 +19,7 @@ struct LiveTrackerTests {
         self.calculator = EarningsCalculator(holidayService: mockHolidayService)
     }
     
-    private func createTestSettings(hourlyRate: Double) -> PaySettings {
+    private func createTestSettings(hourlyRate: Decimal) -> PaySettings {
         var settings = PaySettings(hourlyRate: hourlyRate, startRange: Date.distantPast, endRange: Date.distantFuture)
         settings.recalculateRates()
         return settings
@@ -167,10 +167,49 @@ struct LiveTrackerTests {
         let segments = calculator.workSegments(for: shift, workedUntil: shift.end)
         
         #expect(segments.count == 2)
-        #expect(segments[0].0 == start)
-        #expect(segments[0].1 == breakStart)
-        #expect(segments[1].0 == breakEnd)
-        #expect(segments[1].1 == end)
+        #expect(segments[0].start == start)
+        #expect(segments[0].end == breakStart)
+        #expect(segments[1].start == breakEnd)
+        #expect(segments[1].end == end)
+    }
+
+    @Test func reversedBreakDoesNotDoubleCountTime() {
+        let start = createDate(year: 2026, month: 6, day: 15, hour: 8, minute: 0)
+        let end = createDate(year: 2026, month: 6, day: 15, hour: 17, minute: 0)
+        let breakStart = createDate(year: 2026, month: 6, day: 15, hour: 13, minute: 0)
+        let breakEnd = createDate(year: 2026, month: 6, day: 15, hour: 12, minute: 0)
+        let shift = Shift(
+            start: start,
+            end: end,
+            breakStart: breakStart,
+            breakEnd: breakEnd,
+            breakPaid: false
+        )
+
+        #expect(calculator.workSegments(for: shift, workedUntil: end) == [
+            WorkSegment(start: start, end: end)
+        ])
+    }
+
+    @Test func newYearsPremiumContinuesIntoNextCalendarYear() {
+        let calculator = EarningsCalculator(holidayService: HolidayService())
+        let date = createDate(year: 2027, month: 1, day: 1, hour: 10, minute: 0)
+
+        #expect(calculator.currentType(for: date, calendar: .current) == .holidayMajor)
+    }
+
+    @Test func zeroHourlyRateClearsEveryCalculatedRate() {
+        var settings = createTestSettings(hourlyRate: 150)
+
+        settings.hourlyRate = 0
+        settings.recalculateRates()
+
+        #expect(settings.dayRate == 0)
+        #expect(settings.eveningRate == 0)
+        #expect(settings.nightRate == 0)
+        #expect(settings.weekendRate == 0)
+        #expect(settings.holidayRateA == 0)
+        #expect(settings.holidayRateB == 0)
     }
     
     @Test func testComplexRateBoundary() throws {

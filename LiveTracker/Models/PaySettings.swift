@@ -7,33 +7,40 @@
 
 import Foundation
 
+struct PayRateBreakdown: Equatable, Sendable {
+    let grossPay: Decimal
+    let vacationPay: Decimal
+    let estimatedWithheldTax: Decimal
+    let netPay: Decimal
+
+    var taxableGross: Decimal { grossPay + vacationPay }
+}
+
 struct PaySettings: Identifiable, Codable {
     var id = UUID()
     
-    var hourlyRate: Double = 0
+    var hourlyRate: Decimal = 0
     
-    var dayRate: Double = 0    // 08–17
-    var eveningRate: Double = 0 // 17–24
-    var nightRate: Double = 0   // 24–08
-    var weekendRate: Double = 0
-    var holidayRateA: Double = 0
-    var holidayRateB: Double = 0
-    
-    var showEarned: Bool = true
+    var dayRate: Decimal = 0     // 08:00-18:00
+    var eveningRate: Decimal = 0 // 18:00-24:00
+    var nightRate: Decimal = 0   // 00:00-08:00
+    var weekendRate: Decimal = 0
+    var holidayRateA: Decimal = 0
+    var holidayRateB: Decimal = 0
     
     var startRange: Date
     var endRange: Date
     
-    private static let vacationBonusRate: Double = 0.125
-    private static let taxRate: Double = 0.3
+    static let vacationBonusRate: Decimal = 0.125
+    static let taxRate: Decimal = 0.3
     
     // MARK: - OB Constants
-    private static let standardHoursPerMonth: Double = 160 // 8 * 5 * 4
-    private static let eveningOBDivisor: Double = 600
-    private static let nightOBDivisor: Double = 400
-    private static let weekendOBDivisor: Double = 300
-    private static let holidayAOBDivisor: Double = 300
-    private static let holidayBOBDivisor: Double = 150
+    private static let standardHoursPerMonth: Decimal = 160 // 8 * 5 * 4
+    private static let eveningOBDivisor: Decimal = 600
+    private static let nightOBDivisor: Decimal = 400
+    private static let weekendOBDivisor: Decimal = 300
+    private static let holidayAOBDivisor: Decimal = 300
+    private static let holidayBOBDivisor: Decimal = 150
     
     mutating func recalculateRates() {
         guard hourlyRate > 0 else {
@@ -42,6 +49,7 @@ struct PaySettings: Identifiable, Codable {
             nightRate = 0
             weekendRate = 0
             holidayRateA = 0
+            holidayRateB = 0
             return
         }
         
@@ -58,15 +66,53 @@ struct PaySettings: Identifiable, Codable {
         weekendRate = Self.netForOneHour(grossRate: hourlyRate + weekendOB)
         holidayRateA = Self.netForOneHour(grossRate: hourlyRate + holidayAOB)
         holidayRateB = Self.netForOneHour(grossRate: hourlyRate + holidayBOB)
-    
-        
-    }
-    
-    private static func netForOneHour(grossRate: Double) -> Double {
-        let vacation = grossRate * vacationBonusRate
-        let taxBase = floor(grossRate * taxRate)
-        let taxVacation = floor(vacation * taxRate)
-        return round(grossRate + vacation - taxBase - taxVacation)
     }
 
+    func rateBreakdown(for type: ShiftType) -> PayRateBreakdown {
+        let grossRate = grossRate(for: type)
+        let vacationPay = grossRate * Self.vacationBonusRate
+        let netPay = netRate(for: type)
+
+        return PayRateBreakdown(
+            grossPay: grossRate,
+            vacationPay: vacationPay,
+            estimatedWithheldTax: max(0, grossRate + vacationPay - netPay),
+            netPay: netPay
+        )
+    }
+
+    private func grossRate(for type: ShiftType) -> Decimal {
+        let monthlySalary = hourlyRate * Self.standardHoursPerMonth
+        return switch type {
+        case .day:
+            hourlyRate
+        case .evening:
+            hourlyRate + monthlySalary / Self.eveningOBDivisor
+        case .night:
+            hourlyRate + monthlySalary / Self.nightOBDivisor
+        case .weekend:
+            hourlyRate + monthlySalary / Self.weekendOBDivisor
+        case .holiday:
+            hourlyRate + monthlySalary / Self.holidayAOBDivisor
+        case .holidayMajor:
+            hourlyRate + monthlySalary / Self.holidayBOBDivisor
+        }
+        
+    }
+
+    private func netRate(for type: ShiftType) -> Decimal {
+        switch type {
+        case .day: dayRate
+        case .evening: eveningRate
+        case .night: nightRate
+        case .weekend: weekendRate
+        case .holiday: holidayRateA
+        case .holidayMajor: holidayRateB
+        }
+    }
+    
+    private static func netForOneHour(grossRate: Decimal) -> Decimal {
+        let vacation = grossRate * vacationBonusRate
+        return grossRate + vacation - ((grossRate + vacation) * taxRate)
+    }
 }

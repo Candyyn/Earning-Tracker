@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum ShiftType: String, Codable, CaseIterable {
+public enum ShiftType: String, Codable, CaseIterable, Sendable {
     case day = "day"
     case evening = "evening"
     case night = "night"
@@ -17,8 +17,12 @@ public enum ShiftType: String, Codable, CaseIterable {
     
     public var displayName: String {
         switch self {
-        case .holidayMajor: return "Holiday (Major)"
-        default: return rawValue.capitalized
+        case .day: return "Dag"
+        case .evening: return "Kväll"
+        case .night: return "Natt"
+        case .weekend: return "Helg"
+        case .holiday: return "Storhelg A"
+        case .holidayMajor: return "Storhelg B"
         }
     }
 }

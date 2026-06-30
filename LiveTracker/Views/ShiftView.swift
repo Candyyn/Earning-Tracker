@@ -1,412 +1,414 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ShiftView: View {
     var viewModel: EarningsViewModel
-    
+
     @Query(sort: \Shift.start, order: .forward) private var allShifts: [Shift]
-    
-    @State private var start = Date()
-    @State private var end = Date()
-    @State private var breakStart = Date()
-    @State private var breakEnd = Date()
-    @State private var breakPaid = false
-    @State private var includeBreak = false
-    
-    @State private var editingShiftId: UUID? = nil
-    @State private var selectedMonth = Date()
-    @State private var syncErrorMessage: String?
-    
+    @State private var editor: ShiftEditorViewModel
+    @State private var pendingDeletion: Shift?
+
+    init(viewModel: EarningsViewModel) {
+        self.viewModel = viewModel
+        _editor = State(initialValue: ShiftEditorViewModel(earningsViewModel: viewModel))
+    }
+
     var body: some View {
-        Form {
+        @Bindable var editor = editor
+
+        List {
             Section {
-                NavigationLink(destination: PaySlipVerificationView(earningsViewModel: viewModel)) {
-                    Label("Verify Pay Slip", systemImage: "doc.text.magnifyingglass")
-                        .foregroundStyle(.blue)
+                MonthNavigator(
+                    selectedMonth: editor.selectedMonth,
+                    onPrevious: { editor.changeMonth(by: -1) },
+                    onNext: { editor.changeMonth(by: 1) }
+                )
+            }
+
+            if filteredShifts.isEmpty {
+                Section {
+                    VStack(spacing: 14) {
+                        Image(systemName: "calendar.badge.plus")
+                            .font(.system(.largeTitle, design: .rounded))
+                            .foregroundStyle(.secondary)
+
+                        Text("Inga pass")
+                            .font(.title2.bold())
+
+                        Text("Lägg till ett pass för att börja följa månaden.")
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        Button {
+                            editor.presentNewShift(referenceDate: editor.selectedMonth)
+                        } label: {
+                            Label("Lägg till pass", systemImage: "plus")
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .tint(.accentColor)
+                        .controlSize(.regular)
+                        .accessibilityIdentifier("shifts.empty.add")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 28)
+                    .listRowInsets(EdgeInsets())
+                }
+            } else {
+                Section("Översikt") {
+                    MonthlyShiftSummary(
+                        shiftCount: filteredShifts.count,
+                        hours: monthHours.total,
+                        earnings: monthEarnings,
+                        breakdown: monthBreakdown
+                    )
+                }
+
+                ForEach(groupedShifts, id: \.day) { group in
+                    Section {
+                        ForEach(group.shifts) { shift in
+                            ShiftRow(shift: shift, earnings: viewModel.earningsForFullShift(shift))
+                                .accessibilityIdentifier("shifts.row")
+                                .contentShape(Rectangle())
+                                .onTapGesture { editor.edit(shift) }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    Button("Redigera", systemImage: "pencil") {
+                                        editor.edit(shift)
+                                    }
+                                    .tint(.blue)
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button("Ta bort", systemImage: "trash", role: .destructive) {
+                                        pendingDeletion = shift
+                                    }
+                                }
+                        }
+                    } header: {
+                        Text(group.day, format: .dateTime.weekday(.wide).month(.abbreviated).day())
+                    }
                 }
             }
-            
-            ShiftFormSection(
-                start: $start,
-                end: $end,
-                breakStart: $breakStart,
-                breakEnd: $breakEnd,
-                includeBreak: $includeBreak,
-                breakPaid: $breakPaid,
-                editingShiftId: $editingShiftId,
-                onSave: saveShift,
-                onReset: resetForm,
-                onApplyPreconfigured: applyPreconfiguredShift
-            )
-            
-            ShiftsListSection(
-                viewModel: viewModel,
-                selectedMonth: $selectedMonth,
-                filteredShifts: filteredShifts,
-                totalEarnings: totalEarningsForSelectedMonth,
-                onChangeMonth: changeMonth,
-                onEditShift: editShiftById,
-                onDeleteShifts: deleteFilteredShifts
-            )
         }
-        .navigationTitle("Shifts")
+        .accessibilityIdentifier("shifts.list")
+        .navigationTitle("Arbetspass")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            Task {
-                do {
-                    try await viewModel.shiftRepository.calendarService.requestAccess()
-                    viewModel.importCalendarShifts()
-                } catch {
-                    syncErrorMessage = error.localizedDescription
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                CalendarSyncMenu(viewModel: viewModel, editor: editor)
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    editor.presentNewShift(referenceDate: editor.selectedMonth)
+                } label: {
+                    Image(systemName: "plus")
                 }
+                .accessibilityLabel("Lägg till pass")
+                .accessibilityIdentifier("shifts.add")
             }
         }
-        .onReceive(NotificationCenter.default.publisher(
-            for: UIApplication.willEnterForegroundNotification
-        )) { _ in
-            viewModel.importCalendarShifts()
+        .sheet(isPresented: $editor.isEditorPresented) {
+            ShiftEditorSheet(editor: editor, allShifts: allShifts)
+                .presentationDetents([.large])
+                .interactiveDismissDisabled(editor.isDirty)
         }
-        .alert("Shift Sync Problem", isPresented: Binding(
-            get: { syncErrorMessage != nil },
-            set: { if !$0 { syncErrorMessage = nil } }
+        .task {
+            await editor.synchronizeCalendarIfEnabled()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            Task {
+                await editor.synchronizeCalendarIfEnabled()
+            }
+        }
+        .confirmationDialog(
+            "Ta bort pass?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDeletion
+        ) { shift in
+            Button("Ta bort pass", role: .destructive) {
+                editor.delete([shift])
+                pendingDeletion = nil
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: { _ in
+            Text("Passet tas bort från LiveTracker och, när kalendern är ansluten, från Kalender.")
+        }
+        .alert("Passproblem", isPresented: Binding(
+            get: { editor.errorMessage != nil },
+            set: { if !$0 { editor.errorMessage = nil } }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(syncErrorMessage ?? "")
+            Text(editor.errorMessage ?? "")
         }
     }
 }
 
-// MARK: - Computed
 private extension ShiftView {
     var filteredShifts: [Shift] {
-        let calendar = Calendar.current
-        return allShifts.filter { shift in
-            calendar.component(.month, from: shift.start) == calendar.component(.month, from: selectedMonth) &&
-            calendar.component(.year, from: shift.start) == calendar.component(.year, from: selectedMonth)
+        guard let interval = Calendar.current.dateInterval(of: .month, for: editor.selectedMonth) else {
+            return []
         }
+        return allShifts.filter { interval.contains($0.start) }
     }
-    
-    var totalEarningsForSelectedMonth: Double {
+
+    var groupedShifts: [(day: Date, shifts: [Shift])] {
+        Dictionary(grouping: filteredShifts) { Calendar.current.startOfDay(for: $0.start) }
+            .map { (day: $0.key, shifts: $0.value.sorted { $0.start < $1.start }) }
+            .sorted { $0.day < $1.day }
+    }
+
+    var monthHours: HoursByShiftType {
+        viewModel.workedHoursByType(for: filteredShifts)
+    }
+
+    var monthEarnings: Decimal {
         viewModel.totalEarningsForShifts(filteredShifts)
     }
-}
 
-// MARK: - Actions
-private extension ShiftView {
-    func saveShift() {
-        let newShift = Shift(
-            start: start,
-            end: end,
-            breakStart: includeBreak ? breakStart : nil,
-            breakEnd: includeBreak ? breakEnd : nil,
-            breakPaid: breakPaid
-        )
-        
-        var existingShift: Shift? = nil
-        
-        if let id = editingShiftId, let index = allShifts.firstIndex(where: { $0.id == id }) {
-            existingShift = allShifts[index]
-            newShift.id = existingShift!.id
-            newShift.calendarEventId = existingShift!.calendarEventId
-        }
-        
-        do {
-            let eventId = try viewModel.shiftRepository.calendarService.save(newShift)
-            newShift.calendarEventId = eventId
-        } catch {
-            syncErrorMessage = "The shift will be saved locally, but calendar sync failed: \(error.localizedDescription)"
-        }
-        
-        if let existing = existingShift {
-            existing.start = newShift.start
-            existing.end = newShift.end
-            existing.breakStart = newShift.breakStart
-            existing.breakEnd = newShift.breakEnd
-            existing.breakPaid = newShift.breakPaid
-            existing.calendarEventId = newShift.calendarEventId
-            existing.updateDominantType(holidayService: viewModel.shiftRepository.holidayService)
-        } else {
-            newShift.updateDominantType(holidayService: viewModel.shiftRepository.holidayService)
-            viewModel.modelContext.insert(newShift)
-        }
-        
-        do {
-            try viewModel.modelContext.save()
-            viewModel.refreshShifts()
-            resetForm()
-        } catch {
-            syncErrorMessage = "The shift could not be saved: \(error.localizedDescription)"
-        }
-    }
-    
-    func editShiftById(_ id: UUID) {
-        guard let shift = allShifts.first(where: { $0.id == id }) else { return }
-        
-        start = shift.start
-        end = shift.end
-        if let bStart = shift.breakStart, let bEnd = shift.breakEnd {
-            includeBreak = true
-            breakStart = bStart
-            breakEnd = bEnd
-        } else {
-            includeBreak = false
-        }
-        breakPaid = shift.breakPaid
-        editingShiftId = id
-    }
-    
-    func resetForm() {
-        start = Date()
-        end = Date()
-        includeBreak = false
-        breakPaid = false
-        editingShiftId = nil
-    }
-    
-    func deleteFilteredShifts(at offsets: IndexSet) {
-        let shiftsToDelete = offsets.map { filteredShifts[$0] }
-        
-        for shift in shiftsToDelete {
-            do {
-                try viewModel.shiftRepository.calendarService.delete(shift)
-            } catch {
-                syncErrorMessage = "The shift will be deleted locally, but calendar deletion failed: \(error.localizedDescription)"
-            }
-            viewModel.modelContext.delete(shift)
-        }
-        do {
-            try viewModel.modelContext.save()
-            viewModel.refreshShifts()
-        } catch {
-            syncErrorMessage = "The shift could not be deleted: \(error.localizedDescription)"
-        }
-    }
-    
-    func changeMonth(by value: Int) {
-        if let newDate = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
-            selectedMonth = newDate
-        }
-    }
-    
-    func applyPreconfiguredShift(startHour: Int, endHour: Int, breakStartHour: Int?, breakEndHour: Int?) {
-        let calendar = Calendar.current
-        let now = start // use the currently selected day instead of today
-        
-        if let s = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: now) {
-            start = s
-        }
-        
-        var e = now
-        if endHour < startHour {
-            // cross midnight
-            if let nextDay = calendar.date(byAdding: .day, value: 1, to: now) {
-                e = nextDay
-            }
-        }
-        if let eFinal = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: e) {
-            end = eFinal
-        }
-        
-        if let bStart = breakStartHour, let bEnd = breakEndHour {
-            includeBreak = true
-            breakPaid = false
-            if let bs = calendar.date(bySettingHour: bStart, minute: 0, second: 0, of: now) {
-                breakStart = bs
-            }
-            if let be = calendar.date(bySettingHour: bEnd, minute: 0, second: 0, of: now) {
-                breakEnd = be
-            }
-        } else {
-            includeBreak = false
+    var monthBreakdown: [ShiftTypeBreakdown] {
+        let shiftCounts = Dictionary(grouping: filteredShifts) {
+            $0.dominantShiftType ?? .day
+        }.mapValues { $0.count }
+        let hoursByType = monthHours
+
+        return ShiftType.allCases.compactMap { type in
+            let hours = hoursByType.hours(for: type)
+            let shiftCount = shiftCounts[type, default: 0]
+            guard hours > 0 || shiftCount > 0 else { return nil }
+            return ShiftTypeBreakdown(type: type, shiftCount: shiftCount, hours: hours)
         }
     }
 }
 
-// MARK: - Extracted Components
+private struct MonthNavigator: View {
+    let selectedMonth: Date
+    let onPrevious: () -> Void
+    let onNext: () -> Void
 
-struct ShiftFormSection: View {
-    @Binding var start: Date
-    @Binding var end: Date
-    @Binding var breakStart: Date
-    @Binding var breakEnd: Date
-    @Binding var includeBreak: Bool
-    @Binding var breakPaid: Bool
-    @Binding var editingShiftId: UUID?
-    
-    var onSave: () -> Void
-    var onReset: () -> Void
-    var onApplyPreconfigured: (Int, Int, Int?, Int?) -> Void
-    
     var body: some View {
-        Section(header: Text(editingShiftId == nil ? "New Shift" : "Edit Shift")) {
-            let maxTimeBetween = 24 * 60 * 60
-            
-            DatePicker("Start Time", selection: $start, displayedComponents: [.date, .hourAndMinute])
-                .onChange(of: start) { oldValue, newValue in
-                    if end > newValue.addingTimeInterval(TimeInterval(maxTimeBetween)) {
-                        end = newValue.addingTimeInterval(TimeInterval(maxTimeBetween))
-                    }
-                    if end < newValue {
-                        end = newValue
-                    }
-                }
-            DatePicker("End Time", selection: $end, displayedComponents: [.date, .hourAndMinute])
-            
-            Toggle("Add Break", isOn: $includeBreak.animation())
-            
-            if includeBreak {
-                DatePicker("Break Start", selection: $breakStart, displayedComponents: [.date, .hourAndMinute])
-                    .onChange(of: breakStart) { oldValue, newValue in
-                        if breakEnd > newValue.addingTimeInterval(TimeInterval(maxTimeBetween)) {
-                            breakEnd = newValue.addingTimeInterval(TimeInterval(maxTimeBetween))
-                        }
-                        if breakEnd < newValue {
-                            breakEnd = newValue
-                        }
-                    }
-                DatePicker("Break End", selection: $breakEnd, displayedComponents: [.date, .hourAndMinute])
-                Toggle("Paid Break", isOn: $breakPaid)
-            }
-            
-            if editingShiftId == nil {
-                HStack {
-                    Button("Day Shift") {
-                        onApplyPreconfigured(8, 17, 12, 13)
-                    }
-                    .buttonStyle(.bordered)
-                    Spacer()
-                    Button("Evening Shift") {
-                        onApplyPreconfigured(16, 23, nil, nil)
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding(.vertical, 4)
-                
-                Button(action: onSave) {
-                    Label("Add Shift", systemImage: "plus.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.blue)
-                }
-                .disabled(!isValidShift)
-                .frame(maxWidth: .infinity, alignment: .center)
-            } else {
-                HStack {
-                    Button(action: onSave) {
-                        Label("Save Changes", systemImage: "checkmark.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.blue)
-                    }
-                    .disabled(!isValidShift)
-                    .frame(maxWidth: .infinity)
-                    
-                    Button(role: .destructive, action: onReset) {
-                        Label("Cancel", systemImage: "xmark.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-        }
-    }
-
-    private var isValidShift: Bool {
-        guard end > start else { return false }
-        guard includeBreak else { return true }
-        return breakStart >= start && breakEnd <= end && breakEnd > breakStart
-    }
-}
-
-struct ShiftsListSection: View {
-    var viewModel: EarningsViewModel
-    @Binding var selectedMonth: Date
-    var filteredShifts: [Shift]
-    var totalEarnings: Double
-    var onChangeMonth: (Int) -> Void
-    var onEditShift: (UUID) -> Void
-    var onDeleteShifts: (IndexSet) -> Void
-    
-    var body: some View {
-        Group {
-            if filteredShifts.isEmpty {
-                Section(header: monthHeader) {
-                    Text("No shifts this month")
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Section(header: monthHeader) {
-                    ForEach(filteredShifts) { shift in
-                        ShiftCard(shift: shift, viewModel: viewModel)
-                            .equatable()
-                            .contentShape(Rectangle())
-                            .onTapGesture { onEditShift(shift.id) }
-                    }
-                    .onDelete(perform: onDeleteShifts)
-                    
-                    let hours = viewModel.workedHoursByType(for: filteredShifts)
-                    HoursSummaryView(
-                        dayHours: hours.day,
-                        eveningHours: hours.evening,
-                        nightHours: hours.night,
-                        weekendHours: hours.weekend,
-                        holidayHours: hours.holiday,
-                        holidayMajorHours: hours.holidayMajor,
-                        totalHours: hours.total
-                    )
-                    
-                    HStack {
-                        Spacer()
-                        Text("Total earned: \(totalEarnings, format: .currency(code: "SEK"))")
-                            .font(.headline)
-                            .privacySensitive()
-                        Spacer()
-                    }
-                    .padding(.top, 8)
-                }
-            }
-        }
-    }
-    
-    var monthHeader: some View {
         HStack {
-            Button { onChangeMonth(-1) } label: { Image(systemName: "chevron.left") }
+            Button(action: onPrevious) {
+                Image(systemName: "chevron.left")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Föregående månad")
+            .accessibilityIdentifier("shifts.previousMonth")
+            .buttonStyle(.borderless)
+
             Spacer()
-            Text(selectedMonth, format: .dateTime.month().year())
+
+            Text(selectedMonth, format: .dateTime.month(.wide).year())
                 .font(.headline)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+
             Spacer()
-            Button { onChangeMonth(1) } label: { Image(systemName: "chevron.right") }
+
+            Button(action: onNext) {
+                Image(systemName: "chevron.right")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Nästa månad")
+            .accessibilityIdentifier("shifts.nextMonth")
+            .buttonStyle(.borderless)
         }
     }
 }
 
-struct HoursSummaryView: View {
-    let dayHours: Double
-    let eveningHours: Double
-    let nightHours: Double
-    let weekendHours: Double
-    let holidayHours: Double
-    let holidayMajorHours: Double
-    let totalHours: Double
+private struct ShiftTypeBreakdown: Identifiable {
+    let type: ShiftType
+    let shiftCount: Int
+    let hours: Double
+
+    var id: ShiftType { type }
+}
+
+private struct MonthlyShiftSummary: View {
+    let shiftCount: Int
+    let hours: Double
+    let earnings: Decimal
+    let breakdown: [ShiftTypeBreakdown]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Hours Summary").font(.headline).padding(.bottom, 4)
-            HStack { Text("Day Hours:"); Spacer(); Text("\(dayHours, specifier: "%.2f") h") }
-            HStack { Text("Evening Hours:"); Spacer(); Text("\(eveningHours, specifier: "%.2f") h") }
-            HStack { Text("Night Hours:"); Spacer(); Text("\(nightHours, specifier: "%.2f") h") }
-            HStack { Text("Weekend Hours:"); Spacer(); Text("\(weekendHours, specifier: "%.2f") h") }
-            HStack { Text("Holiday Hours:"); Spacer(); Text("\(holidayHours, specifier: "%.2f") h") }
-            HStack { Text("Holiday (Major) Hours:"); Spacer(); Text("\(holidayMajorHours, specifier: "%.2f") h") }
-            Divider()
-            HStack {
-                Text("Total Hours:").fontWeight(.bold)
-                Spacer()
-                Text("\(totalHours, specifier: "%.2f") h").fontWeight(.bold)
+        VStack(spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) {
+                    metric(title: "Pass", value: shiftCount.formatted(.number.locale(SwedishMarket.locale)))
+                    Divider()
+                    metric(title: "Timmar", value: formattedHours(hours))
+                    Divider()
+                    metric(title: "Intjänat", value: SwedishMarket.currencyWithOre(earnings))
+                        .privacySensitive()
+                }
+
+                VStack(spacing: 10) {
+                    LabeledContent("Pass", value: shiftCount.formatted(.number.locale(SwedishMarket.locale)))
+                    LabeledContent("Timmar", value: formattedHours(hours))
+                    LabeledContent("Intjänat", value: SwedishMarket.currencyWithOre(earnings))
+                        .privacySensitive()
+                }
+            }
+            .padding(.vertical, 4)
+
+            if !breakdown.isEmpty {
+                Divider()
+                    .padding(.vertical, 10)
+
+                VStack(spacing: 12) {
+                    ForEach(breakdown) { item in
+                        HStack(spacing: 12) {
+                            Image(systemName: item.type.systemImage)
+                                .foregroundStyle(item.type.tint)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.type.displayName)
+                                Text(shiftCountText(item.shiftCount))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Text(formattedHours(item.hours))
+                                .font(.body.weight(.semibold))
+                                .monospacedDigit()
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
             }
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(10)
-        .padding(.vertical, 8)
+    }
+
+    private func metric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.body.weight(.semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func formattedHours(_ hours: Double) -> String {
+        SwedishMarket.hours(hours)
+    }
+
+    private func shiftCountText(_ count: Int) -> String {
+        switch count {
+        case 0: "Del av blandade pass"
+        case 1: "Huvudtyp för 1 pass"
+        default: "Huvudtyp för \(count) pass"
+        }
+    }
+}
+
+private extension HoursByShiftType {
+    func hours(for type: ShiftType) -> Double {
+        switch type {
+        case .day: day
+        case .evening: evening
+        case .night: night
+        case .weekend: weekend
+        case .holiday: holiday
+        case .holidayMajor: holidayMajor
+        }
+    }
+}
+
+private struct ShiftRow: View {
+    let shift: Shift
+    let earnings: Decimal
+
+    private var shiftType: ShiftType {
+        shift.dominantShiftType ?? .day
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: shiftType.systemImage)
+                .foregroundStyle(shiftType.tint)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(timeRange)
+                    .font(.body.weight(.medium))
+                    .monospacedDigit()
+                HStack(spacing: 6) {
+                    Text(durationText)
+                    Text("•")
+                    Text(shiftType.displayName)
+                    if shift.breakStart != nil {
+                        Text("•")
+                        Text(shift.breakPaid ? "Betald rast" : "Rast")
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(SwedishMarket.currencyWithOre(earnings))
+                .font(.body.weight(.semibold))
+                .monospacedDigit()
+                .privacySensitive()
+        }
+        .padding(.vertical, 3)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+        .accessibilityHint("Dubbeltryck för att redigera passet.")
+    }
+
+    private var timeRange: String {
+        "\(shift.start.formatted(.dateTime.locale(SwedishMarket.locale).hour().minute())) - \(shift.end.formatted(.dateTime.locale(SwedishMarket.locale).hour().minute()))"
+    }
+
+    private var durationText: String {
+        let unpaidBreak: TimeInterval = if let start = shift.breakStart, let end = shift.breakEnd, !shift.breakPaid {
+            end.timeIntervalSince(start)
+        } else {
+            0.0
+        }
+        let hours = max(0, shift.end.timeIntervalSince(shift.start) - unpaidBreak) / 3600
+        return SwedishMarket.hours(hours)
+    }
+
+    private var accessibilityText: String {
+        "\(timeRange), \(durationText), \(shiftType.displayName), \(SwedishMarket.currencyWithOre(earnings))"
+    }
+}
+
+private extension ShiftType {
+    var systemImage: String {
+        switch self {
+        case .day: "sun.max"
+        case .evening: "sunset"
+        case .night: "moon.stars"
+        case .weekend: "calendar"
+        case .holiday: "flag"
+        case .holidayMajor: "star"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .day: .yellow
+        case .evening: .orange
+        case .night: .blue
+        case .weekend: .teal
+        case .holiday: .red
+        case .holidayMajor: .purple
+        }
     }
 }

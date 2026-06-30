@@ -1,2 +1,7 @@
 build.sh
 Users/*
+android/.gradle/
+android/.idea/
+android/.kotlin/
+android/local.properties
+android/**/build/
